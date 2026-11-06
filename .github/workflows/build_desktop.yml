@@ -5,7 +5,7 @@ on:
     branches: [ main, master ]
   pull_request:
     branches: [ main, master ]
-  workflow_dispatch: # Permet de lancer le build manuellement en 1 clic depuis GitHub
+  workflow_dispatch:
 
 jobs:
   build-windows:
@@ -27,14 +27,19 @@ jobs:
       - name: Build Windows Executable
         run: flutter build windows --release
 
+      - name: Package Windows Release (.zip)
+        run: |
+          Compress-Archive -Path build\windows\x64\runner\Release\* -DestinationPath Elyxia_EB_Windows.zip
+        shell: pwsh
+
       - name: Archive Windows Release
         uses: actions/upload-artifact@v4
         with:
           name: Elyxia_EB_Windows_Release
-          path: build/windows/x64/runner/Release/
+          path: Elyxia_EB_Windows.zip
 
   build-macos:
-    name: Build macOS (.app / .zip)
+    name: Build macOS (.dmg & .zip)
     runs-on: macos-latest
     steps:
       - name: Checkout repository
@@ -52,13 +57,22 @@ jobs:
       - name: Build macOS App
         run: flutter build macos --release
 
-      - name: Zip macOS App
+      - name: Package macOS DMG & ZIP
         run: |
           cd build/macos/Build/Products/Release
-          zip -r Elyxia_EB_macOS.zip elyxia_eb.app
+          # 1. Utilisation de ditto pour préserver scrupuleusement les symlinks et métadonnées Apple
+          ditto -c -k --sequesterRsrc --keepParent elyxia_eb.app Elyxia_EB_macOS.zip
+          # 2. Création de l'image disque .DMG prête à installer par glisser-déposer
+          hdiutil create -volname "Elyxia EB" -srcfolder elyxia_eb.app -ov -format UDZO Elyxia_EB_macOS.dmg
 
-      - name: Archive macOS Release
+      - name: Upload macOS DMG Installer
         uses: actions/upload-artifact@v4
         with:
-          name: Elyxia_EB_macOS_Release
+          name: Elyxia_EB_macOS_DMG
+          path: build/macos/Build/Products/Release/Elyxia_EB_macOS.dmg
+
+      - name: Upload macOS Portable ZIP
+        uses: actions/upload-artifact@v4
+        with:
+          name: Elyxia_EB_macOS_ZIP
           path: build/macos/Build/Products/Release/Elyxia_EB_macOS.zip
