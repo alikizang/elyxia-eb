@@ -20,10 +20,11 @@ class LoginScreen extends StatefulWidget {
 
 class _LoginScreenState extends State<LoginScreen> {
   final _usernameController = TextEditingController(text: 'admin');
-  final _passwordController = TextEditingController(text: 'admin123');
+  final _passwordController = TextEditingController();
   bool _isPasswordVisible = false;
   bool _isLoading = true;
   String? _errorMessage;
+  bool _isDefaultAdminPassword = false;
 
   AppSettings? _settings;
 
@@ -37,10 +38,12 @@ class _LoginScreenState extends State<LoginScreen> {
     setState(() => _isLoading = true);
     final db = DatabaseHelper.instance;
     final settings = await db.getSettings();
+    final defaultAdmin = await db.authenticate('admin', 'admin123');
 
     if (mounted) {
       setState(() {
         _settings = settings;
+        _isDefaultAdminPassword = (defaultAdmin != null);
         _isLoading = false;
       });
     }
@@ -98,28 +101,41 @@ class _LoginScreenState extends State<LoginScreen> {
     final accentColor = AppColors.fromHex(_settings?.accentColorHex);
 
     return Scaffold(
-      backgroundColor: const Color(0xFF0F172A), // Dark slate blue background
-      body: Center(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // Carte de connexion
-              Container(
-                width: 440,
-                padding: const EdgeInsets.all(36),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(16),
-                  boxShadow: const [
-                    BoxShadow(
-                      color: Colors.black26,
-                      blurRadius: 24,
-                      offset: Offset(0, 8),
-                    ),
-                  ],
-                ),
+      body: Container(
+        width: double.infinity,
+        height: double.infinity,
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              Color.lerp(primaryColor, const Color(0xFF020617), 0.72)!,
+              Color.lerp(primaryColor, const Color(0xFF0F172A), 0.85)!,
+              const Color(0xFF020617),
+            ],
+          ),
+        ),
+        child: Center(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Carte de connexion
+                Container(
+                  width: 440,
+                  padding: const EdgeInsets.all(36),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(16),
+                    boxShadow: const [
+                      BoxShadow(
+                        color: Colors.black38,
+                        blurRadius: 28,
+                        offset: Offset(0, 10),
+                      ),
+                    ],
+                  ),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
@@ -290,29 +306,30 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                     ),
 
-                    const SizedBox(height: 18),
-
-                    // Aide / Rappel des identifiants initiaux
-                    Container(
-                      padding: const EdgeInsets.all(10),
-                      decoration: BoxDecoration(
-                        color: Colors.blue.shade50,
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: Colors.blue.shade200),
-                      ),
-                      child: Row(
-                        children: [
-                          Icon(Icons.info_outline, size: 16, color: Colors.blue.shade800),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              "Accès initial : admin  /  admin123 (Modifiable dans les Paramètres)",
-                              style: TextStyle(fontSize: 11, color: Colors.blue.shade900),
+                    if (_isDefaultAdminPassword) ...[
+                      const SizedBox(height: 18),
+                      // Aide / Rappel des identifiants initiaux (masqué dès que le mot de passe est changé)
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: Colors.blue.shade50,
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: Colors.blue.shade200),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(Icons.info_outline, size: 16, color: Colors.blue.shade800),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                "Accès initial : admin  /  admin123 (Modifiable dans les Paramètres)",
+                                style: TextStyle(fontSize: 11, color: Colors.blue.shade900),
+                              ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
-                    ),
+                    ],
                   ],
                 ),
               ),
@@ -328,6 +345,7 @@ class _LoginScreenState extends State<LoginScreen> {
           ),
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 }

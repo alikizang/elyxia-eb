@@ -9,6 +9,7 @@ import '../models/app_settings.dart';
 import '../models/school_class.dart';
 import '../models/student.dart';
 import '../services/csv_service.dart';
+import '../services/excel_service.dart';
 import '../theme/app_colors.dart';
 
 class StudentsScreen extends StatefulWidget {
@@ -116,28 +117,139 @@ class _StudentsScreenState extends State<StudentsScreen> {
                     ],
                   ),
                 ),
-                // Bouton Modèle CSV
-                OutlinedButton.icon(
-                  onPressed: () => _downloadCsvTemplate(context),
-                  icon: const Icon(Icons.file_copy_outlined, size: 18),
-                  label: const Text("Modèle CSV"),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: AppColors.textSecondary,
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                // Menu déroulant Modèle (Excel prioritaire / CSV)
+                PopupMenuButton<String>(
+                  tooltip: "Télécharger un modèle de fichier",
+                  onSelected: (val) {
+                    if (val == 'xlsx') {
+                      _downloadXlsxTemplate(context);
+                    } else if (val == 'csv') {
+                      _downloadCsvTemplate(context);
+                    }
+                  },
+                  itemBuilder: (ctx) => [
+                    PopupMenuItem(
+                      value: 'xlsx',
+                      child: Row(
+                        children: [
+                          Icon(Icons.table_chart_rounded, size: 18, color: Colors.green.shade700),
+                          const SizedBox(width: 10),
+                          const Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text("Modèle Excel (.xlsx)", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                              Text("Format recommandé par défaut", style: TextStyle(fontSize: 11, color: AppColors.textSecondary)),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                    const PopupMenuDivider(),
+                    const PopupMenuItem(
+                      value: 'csv',
+                      child: Row(
+                        children: [
+                          Icon(Icons.description_outlined, size: 18, color: AppColors.textSecondary),
+                          SizedBox(width: 10),
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text("Modèle Texte CSV (.csv)", style: TextStyle(fontSize: 13)),
+                              Text("Format universel texte délimité", style: TextStyle(fontSize: 11, color: AppColors.textSecondary)),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                  child: OutlinedButton.icon(
+                    onPressed: null, // Délégué au PopupMenuButton
+                    icon: const Icon(Icons.file_download_outlined, size: 18),
+                    label: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text("Modèle Excel / CSV"),
+                        SizedBox(width: 4),
+                        Icon(Icons.arrow_drop_down, size: 16),
+                      ],
+                    ),
+                    style: OutlinedButton.styleFrom(
+                      disabledForegroundColor: AppColors.textSecondary,
+                      foregroundColor: AppColors.textSecondary,
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                    ),
                   ),
                 ),
                 const SizedBox(width: 10),
-                // Bouton Importer CSV
-                OutlinedButton.icon(
-                  onPressed: widget.isReadOnly ? null : () => _importCsv(context),
-                  icon: const Icon(Icons.upload_file_rounded, size: 18),
-                  label: const Text("Importer CSV"),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: primaryColor,
-                    side: BorderSide(color: primaryColor),
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                // Menu déroulant Importer (Excel prioritaire / CSV)
+                PopupMenuButton<String>(
+                  tooltip: "Importer des candidats depuis un fichier",
+                  enabled: !widget.isReadOnly,
+                  onSelected: (val) {
+                    if (val == 'xlsx') {
+                      _importXlsx(context);
+                    } else if (val == 'csv') {
+                      _importCsv(context);
+                    }
+                  },
+                  itemBuilder: (ctx) => [
+                    PopupMenuItem(
+                      value: 'xlsx',
+                      child: Row(
+                        children: [
+                          Icon(Icons.table_chart_rounded, size: 18, color: Colors.green.shade700),
+                          const SizedBox(width: 10),
+                          const Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text("Importer fichier Excel (.xlsx)", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                              Text("Lecture automatique des colonnes", style: TextStyle(fontSize: 11, color: AppColors.textSecondary)),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                    const PopupMenuDivider(),
+                    const PopupMenuItem(
+                      value: 'csv',
+                      child: Row(
+                        children: [
+                          Icon(Icons.upload_file_rounded, size: 18, color: AppColors.textSecondary),
+                          SizedBox(width: 10),
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text("Importer fichier CSV (.csv)", style: TextStyle(fontSize: 13)),
+                              Text("Fichier avec virgule ou point-virgule", style: TextStyle(fontSize: 11, color: AppColors.textSecondary)),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                  child: OutlinedButton.icon(
+                    onPressed: null, // Délégué au PopupMenuButton
+                    icon: const Icon(Icons.upload_file_rounded, size: 18),
+                    label: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text("Importer Élèves"),
+                        const SizedBox(width: 4),
+                        const Icon(Icons.arrow_drop_down, size: 16),
+                      ],
+                    ),
+                    style: OutlinedButton.styleFrom(
+                      disabledForegroundColor: widget.isReadOnly ? AppColors.textMuted : primaryColor,
+                      foregroundColor: primaryColor,
+                      side: BorderSide(color: widget.isReadOnly ? AppColors.border : primaryColor),
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                    ),
                   ),
                 ),
                 const SizedBox(width: 10),
@@ -239,7 +351,8 @@ class _StudentsScreenState extends State<StudentsScreen> {
                         SizedBox(width: 80, child: Text("N° TABLE", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12))),
                         SizedBox(width: 140, child: Text("MATRICULE", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12))),
                         Expanded(flex: 3, child: Text("NOM & PRÉNOMS", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12))),
-                        SizedBox(width: 70, child: Text("SEXE", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12))),
+                        SizedBox(width: 85, child: Text("SEXE", textAlign: TextAlign.center, style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12))),
+                        SizedBox(width: 24),
                         Expanded(flex: 2, child: Text("DATE & LIEU DE NAISSANCE", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12))),
                         SizedBox(width: 100, child: Text("ACTIONS", textAlign: TextAlign.center, style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12))),
                       ],
@@ -282,27 +395,30 @@ class _StudentsScreenState extends State<StudentsScreen> {
                                       ),
                                     ),
                                     SizedBox(
-                                      width: 70,
-                                      child: Container(
-                                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                                        decoration: BoxDecoration(
-                                          color: student.gender == 'F' ? primaryColor.withValues(alpha: 0.12) : const Color(0xFFF1F5F9),
-                                          borderRadius: BorderRadius.circular(6),
-                                          border: Border.all(
-                                            color: student.gender == 'F' ? primaryColor.withValues(alpha: 0.35) : const Color(0xFFCBD5E1),
+                                      width: 85,
+                                      child: Center(
+                                        child: Container(
+                                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3.5),
+                                          decoration: BoxDecoration(
+                                            color: student.gender == 'F' ? primaryColor.withValues(alpha: 0.12) : const Color(0xFFF1F5F9),
+                                            borderRadius: BorderRadius.circular(6),
+                                            border: Border.all(
+                                              color: student.gender == 'F' ? primaryColor.withValues(alpha: 0.35) : const Color(0xFFCBD5E1),
+                                            ),
                                           ),
-                                        ),
-                                        child: Text(
-                                          student.gender == 'F' ? 'Fille' : 'Garçon',
-                                          textAlign: TextAlign.center,
-                                          style: TextStyle(
-                                            fontSize: 11,
-                                            fontWeight: FontWeight.bold,
-                                            color: student.gender == 'F' ? primaryColor : const Color(0xFF334155),
+                                          child: Text(
+                                            student.gender == 'F' ? 'Fille' : 'Garçon',
+                                            textAlign: TextAlign.center,
+                                            style: TextStyle(
+                                              fontSize: 11,
+                                              fontWeight: FontWeight.bold,
+                                              color: student.gender == 'F' ? primaryColor : const Color(0xFF334155),
+                                            ),
                                           ),
                                         ),
                                       ),
                                     ),
+                                    const SizedBox(width: 24),
                                     Expanded(
                                       flex: 2,
                                       child: Text(
@@ -856,22 +972,39 @@ class _StudentsScreenState extends State<StudentsScreen> {
     }
   }
 
-  Future<void> _importCsv(BuildContext context) async {
+  Future<void> _importXlsx(BuildContext context) async {
     final result = await FilePicker.pickFiles(
       type: FileType.custom,
-      allowedExtensions: ['csv', 'txt'],
+      allowedExtensions: ['xlsx', 'xls'],
     );
 
     if (result.isNotEmpty && result.first.path != null) {
       final file = File(result.first.path!);
-      final content = await file.readAsString();
-      final students = CsvService.parseStudentsCsv(content, widget.schoolClass.id!);
+      final bytes = await file.readAsBytes();
+
+      if (bytes.isEmpty) {
+        if (mounted && context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text("Impossible de lire le fichier Excel sélectionné."),
+              backgroundColor: AppColors.error,
+            ),
+          );
+        }
+        return;
+      }
+
+      final students = ExcelService.parseStudentsXlsx(
+        bytes,
+        widget.schoolClass.id!,
+        academicYear: widget.academicYear,
+      );
 
       if (students.isEmpty) {
         if (mounted && context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text("Aucun candidat valide trouvé dans le fichier CSV."),
+              content: Text("Aucun candidat valide trouvé dans le fichier Excel. Vérifiez les colonnes (Nom, Prénoms, etc.)."),
               backgroundColor: AppColors.error,
             ),
           );
@@ -884,7 +1017,7 @@ class _StudentsScreenState extends State<StudentsScreen> {
       if (mounted && context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text("${students.length} candidats importés avec succès !"),
+            content: Text("${students.length} candidat(s) importé(s) avec succès depuis Excel pour l'année ${widget.academicYear} !"),
             backgroundColor: AppColors.success,
           ),
         );
@@ -893,14 +1026,83 @@ class _StudentsScreenState extends State<StudentsScreen> {
     }
   }
 
+  Future<void> _importCsv(BuildContext context) async {
+    final result = await FilePicker.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: ['csv', 'txt'],
+    );
+
+    if (result.isNotEmpty && result.first.path != null) {
+      final file = File(result.first.path!);
+      String content = '';
+      try {
+        content = await file.readAsString();
+      } catch (_) {
+        final b = await file.readAsBytes();
+        content = utf8.decode(b, allowMalformed: true);
+      }
+
+      final students = CsvService.parseStudentsCsv(
+        content,
+        widget.schoolClass.id!,
+        academicYear: widget.academicYear,
+      );
+
+      if (students.isEmpty) {
+        if (mounted && context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text("Aucun candidat valide trouvé dans le fichier CSV. Vérifiez l'en-tête ou les données."),
+              backgroundColor: AppColors.error,
+            ),
+          );
+        }
+        return;
+      }
+
+      await DatabaseHelper.instance.addStudentsBatch(students);
+
+      if (mounted && context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text("${students.length} candidat(s) importé(s) avec succès depuis CSV pour l'année ${widget.academicYear} !"),
+            backgroundColor: AppColors.success,
+          ),
+        );
+        widget.onStudentsChanged();
+      }
+    }
+  }
+
+  Future<void> _downloadXlsxTemplate(BuildContext context) async {
+    final bytes = ExcelService.generateStudentsTemplateXlsx();
+    final savedUri = await FilePicker.saveFile(
+      dialogTitle: "Enregistrer le modèle Excel",
+      fileName: "modele_candidats_elyxia.xlsx",
+      bytes: bytes,
+    );
+
+    if (savedUri != null) {
+      if (mounted && context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text("Modèle Excel (.xlsx) enregistré avec succès ! (${savedUri.path})"),
+            backgroundColor: AppColors.success,
+          ),
+        );
+      }
+    }
+  }
+
   Future<void> _downloadCsvTemplate(BuildContext context) async {
-    const template = "Matricule;N° Table;Nom;Prénoms;Sexe;Date Naissance;Lieu Naissance\n"
-        "VIC-2025-001;001;KOUDOSSOU;Koffi Jean;M;12/04/2007;Lomé\n"
-        "VIC-2025-002;002;ADJALLÉ;Afiwa Rose;F;23/09/2007;Aného\n";
+    const template = "N° Table;Matricule;Nom;Prénoms;Sexe;Date Naissance;Lieu Naissance;Doublant\n"
+        "101;VIC-2025-0101;KOUDOSSOU;Koffi Jean-Luc;M;14/05/2007;Lomé;NON\n"
+        "102;VIC-2025-0102;ADJALLÉ;Afiwa Blandine;F;22/09/2007;Aného;NON\n"
+        "103;VIC-2025-0103;MENSAH;Kokou Mawunyo;M;03/01/2008;Kpalimé;OUI\n";
 
     final savedUri = await FilePicker.saveFile(
       dialogTitle: "Enregistrer le modèle CSV",
-      fileName: "modele_eleves_elyxia.csv",
+      fileName: "modele_candidats_elyxia.csv",
       bytes: Uint8List.fromList(utf8.encode(template)),
     );
 

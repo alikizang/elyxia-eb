@@ -210,7 +210,7 @@ class _PrintReportCardScreenState extends State<PrintReportCardScreen> {
 
                     if (!_isBatchMode) ...[
                       const SizedBox(width: 16),
-                      // Dropdown avec largeur élastique mais protégée
+                      // Dropdown occupant tout l'espace disponible sans être tronqué
                       Expanded(
                         child: Container(
                           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
@@ -228,7 +228,7 @@ class _PrintReportCardScreenState extends State<PrintReportCardScreen> {
                                 return DropdownMenuItem<StudentResult>(
                                   value: r,
                                   child: Text(
-                                    "[N° ${r.student.tableNumber}] ${r.student.fullName} (Moy: ${r.averageFormatted}/20 — Rang: ${r.rankFormatted})",
+                                    "[N° ${r.student.tableNumber}] ${r.student.fullName}  •  Moyenne : ${r.averageFormatted}/20  •  Rang : ${r.rankFormatted}",
                                     overflow: TextOverflow.ellipsis,
                                     style: const TextStyle(
                                       color: AppColors.textPrimary,
@@ -247,9 +247,10 @@ class _PrintReportCardScreenState extends State<PrintReportCardScreen> {
                           ),
                         ),
                       ),
+                      const SizedBox(width: 16),
+                    ] else ...[
+                      const Spacer(),
                     ],
-
-                    const Spacer(),
 
                     // Interrupteur Signatures Numérisées
                     Container(

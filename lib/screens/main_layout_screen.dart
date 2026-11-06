@@ -41,6 +41,7 @@ class MainLayoutScreen extends StatefulWidget {
 class _MainLayoutScreenState extends State<MainLayoutScreen> {
   int _selectedNavIndex = 0;
   bool _isLoading = true;
+  bool _isSidebarCollapsed = false;
 
   AppSettings? _settings;
   List<AcademicYear> _academicYears = [];
@@ -347,6 +348,8 @@ class _MainLayoutScreenState extends State<MainLayoutScreen> {
             onClassChanged: _onClassChanged,
             currentUser: widget.currentUser,
             onLogout: widget.onLogout,
+            isCollapsed: _isSidebarCollapsed,
+            onToggleCollapse: () => setState(() => _isSidebarCollapsed = !_isSidebarCollapsed),
           ),
           Expanded(child: content),
         ],
