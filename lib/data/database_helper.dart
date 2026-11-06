@@ -547,4 +547,55 @@ class DatabaseHelper {
     }
     await batch.commit(noResult: true);
   }
+
+  // ==================== SAUVEGARDE & PORTABILITÉ SQL (CROSS-PLATFORM) ====================
+  Future<String> getDatabasePath() async {
+    final docsDir = await getApplicationDocumentsDirectory();
+    return p.join(docsDir.path, 'ElyxiaEB', 'elyxia_eb.db');
+  }
+
+  Future<List<int>> exportDatabaseBytes() async {
+    final path = await getDatabasePath();
+    final file = File(path);
+    if (!await file.exists()) {
+      await database; // force initialisation
+    }
+    return await file.readAsBytes();
+  }
+
+  Future<void> importDatabaseBytes(List<int> newBytes) async {
+    if (_database != null) {
+      await _database!.close();
+      _database = null;
+    }
+    final path = await getDatabasePath();
+    final file = File(path);
+    await file.writeAsBytes(newBytes, flush: true);
+    _database = await _initDB('elyxia_eb.db');
+  }
+
+  Future<String> exportSqlScript() async {
+    final db = await database;
+    final buffer = StringBuffer();
+    buffer.writeln("-- ========================================================");
+    buffer.writeln("-- Elyxia EB - Sauvegarde SQL Portative (Windows & macOS)");
+    buffer.writeln("-- Établissement : Complexe Scolaire Les Victorieux");
+    buffer.writeln("-- ========================================================\n");
+
+    final tables = ['settings', 'classes', 'subjects', 'students', 'exams', 'marks'];
+    for (final table in tables) {
+      final rows = await db.query(table);
+      buffer.writeln("\n-- Table: $table (${rows.length} enregistrements)");
+      for (final row in rows) {
+        final cols = row.keys.join(', ');
+        final values = row.values.map((v) {
+          if (v == null) return "NULL";
+          if (v is num) return "$v";
+          return "'${v.toString().replaceAll("'", "''")}'";
+        }).join(', ');
+        buffer.writeln("INSERT OR REPLACE INTO $table ($cols) VALUES ($values);");
+      }
+    }
+    return buffer.toString();
+  }
 }

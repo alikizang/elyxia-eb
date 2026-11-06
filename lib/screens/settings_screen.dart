@@ -1,3 +1,7 @@
+import 'dart:convert' show utf8;
+import 'dart:io';
+import 'dart:typed_data';
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 
 import '../data/database_helper.dart';
@@ -48,7 +52,7 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this);
+    _tabController = TabController(length: 4, vsync: this);
 
     _schoolNameCtrl = TextEditingController(text: widget.settings.schoolName);
     _subTitleCtrl = TextEditingController(text: widget.settings.schoolSubTitle);
@@ -168,6 +172,7 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
                     Tab(icon: Icon(Icons.school_rounded, size: 18), text: "Établissement"),
                     Tab(icon: Icon(Icons.menu_book_rounded, size: 18), text: "Matières & Coefs"),
                     Tab(icon: Icon(Icons.event_note_rounded, size: 18), text: "Sessions d'Examens"),
+                    Tab(icon: Icon(Icons.storage_rounded, size: 18), text: "Sauvegarde & SQL"),
                   ],
                 ),
               ],
@@ -184,6 +189,7 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
                 _buildSchoolTab(),
                 _buildSubjectsTab(),
                 _buildExamsTab(),
+                _buildDatabaseTab(),
               ],
             ),
           ),
@@ -729,5 +735,241 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
         ],
       ),
     );
+  }
+
+  // ==================== ONGLET BASE DE DONNÉES & PORTABILITÉ SQL ====================
+  Widget _buildDatabaseTab() {
+    return SingleChildScrollView(
+      child: Container(
+        padding: const EdgeInsets.all(24),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: AppColors.border),
+          boxShadow: const [
+            BoxShadow(color: Colors.black12, blurRadius: 4, offset: Offset(0, 2)),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              "Portabilité & Sauvegarde SQL (Windows ↔ Mac)",
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.primary),
+            ),
+            const SizedBox(height: 4),
+            const Text(
+              "La base de données est 100% hors ligne et stockée dans un fichier SQL standard. Vous pouvez l'exporter sur une clé USB et l'importer sur n'importe quel ordinateur Windows ou Mac pour continuer votre travail sans interruption.",
+              style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
+            ),
+            const Divider(height: 32, color: AppColors.border),
+
+            _buildDbCard(
+              title: "1. Exporter la Base de Données (.db)",
+              description: "Sauvegarde complète de tous les élèves, classes, notes et sessions dans un fichier SQLite binaire (.db). Compatible Windows et macOS sans conversion.",
+              icon: Icons.upload_file_rounded,
+              buttonText: "Exporter la Base (.db)",
+              buttonColor: AppColors.primary,
+              onPressed: () => _exportDatabaseFile(context),
+            ),
+
+            const SizedBox(height: 16),
+
+            _buildDbCard(
+              title: "2. Importer / Restaurer une Base de Données (.db)",
+              description: "Chargez un fichier de sauvegarde (.db) depuis une clé USB ou un disque. Vos données actuelles seront remplacées par celles du fichier importé.",
+              icon: Icons.download_rounded,
+              buttonText: "Importer la Base (.db)",
+              buttonColor: AppColors.accent,
+              isAccent: true,
+              onPressed: () => _importDatabaseFile(context),
+            ),
+
+            const SizedBox(height: 16),
+
+            _buildDbCard(
+              title: "3. Exporter le Script SQL Brut (.sql)",
+              description: "Génère un fichier texte SQL avec toutes les instructions (INSERT OR REPLACE) de vos tables pour consultation ou injection dans un autre SGBD.",
+              icon: Icons.terminal_rounded,
+              buttonText: "Exporter Script (.sql)",
+              buttonColor: AppColors.info,
+              onPressed: () => _exportSqlDump(context),
+            ),
+
+            const Divider(height: 32, color: AppColors.border),
+
+            FutureBuilder<String>(
+              future: DatabaseHelper.instance.getDatabasePath(),
+              builder: (context, snapshot) {
+                final path = snapshot.data ?? "...";
+                return Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: AppColors.surfaceSubtle,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: AppColors.border),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.folder_open_rounded, color: AppColors.primary, size: 22),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text("Emplacement local du fichier SQL sur cette machine :", style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                            const SizedBox(height: 2),
+                            Text(path, style: const TextStyle(fontSize: 11, color: AppColors.textSecondary, fontFamily: 'monospace')),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDbCard({
+    required String title,
+    required String description,
+    required IconData icon,
+    required String buttonText,
+    required Color buttonColor,
+    required VoidCallback onPressed,
+    bool isAccent = false,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceSubtle.withValues(alpha: 0.5),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: buttonColor.withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(icon, color: buttonColor, size: 28),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
+                const SizedBox(height: 4),
+                Text(description, style: const TextStyle(fontSize: 12, color: AppColors.textSecondary, height: 1.3)),
+              ],
+            ),
+          ),
+          const SizedBox(width: 16),
+          ElevatedButton.icon(
+            onPressed: onPressed,
+            icon: Icon(icon, size: 18),
+            label: Text(buttonText),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: buttonColor,
+              foregroundColor: isAccent ? AppColors.primaryDark : Colors.white,
+              textStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _exportDatabaseFile(BuildContext context) async {
+    final bytes = await DatabaseHelper.instance.exportDatabaseBytes();
+    final today = DateTime.now().toString().split(' ').first;
+    final savedUri = await FilePicker.saveFile(
+      dialogTitle: "Exporter la Base de Données (.db)",
+      fileName: "elyxia_eb_backup_$today.db",
+      bytes: Uint8List.fromList(bytes),
+    );
+
+    if (savedUri != null && mounted && context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text("Base de données exportée avec succès ! (${savedUri.path})"),
+          backgroundColor: AppColors.success,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
+  }
+
+  Future<void> _importDatabaseFile(BuildContext context) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text("Attention : Remplacement de la base de données"),
+        content: const Text(
+          "L'importation va remplacer les données locales actuelles par celles du fichier sélectionné.\n\nVoulez-vous continuer ?",
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text("Annuler")),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.warning, foregroundColor: Colors.black87),
+            child: const Text("Continuer"),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm != true) return;
+
+    final picked = await FilePicker.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: ['db', 'sqlite', 'sqlite3'],
+    );
+
+    if (picked.isNotEmpty && picked.first.path != null) {
+      final file = File(picked.first.path!);
+      final bytes = await file.readAsBytes();
+      await DatabaseHelper.instance.importDatabaseBytes(bytes);
+
+      if (mounted && context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("Base de données importée et synchronisée avec succès !"),
+            backgroundColor: AppColors.success,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+        widget.onSettingsUpdated();
+      }
+    }
+  }
+
+  Future<void> _exportSqlDump(BuildContext context) async {
+    final sql = await DatabaseHelper.instance.exportSqlScript();
+    final today = DateTime.now().toString().split(' ').first;
+    final savedUri = await FilePicker.saveFile(
+      dialogTitle: "Exporter le Script SQL (.sql)",
+      fileName: "elyxia_eb_dump_$today.sql",
+      bytes: Uint8List.fromList(utf8.encode(sql)),
+    );
+
+    if (savedUri != null && mounted && context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text("Script SQL exporté avec succès ! (${savedUri.path})"),
+          backgroundColor: AppColors.success,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
   }
 }
