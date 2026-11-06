@@ -1,12 +1,19 @@
 import 'package:flutter/material.dart';
 
 class AppColors {
-  // Elyxia Brand Colors
-  static const Color primary = Color(0xFF22577A);
-  static const Color primaryDark = Color(0xFF16384F);
-  static const Color primaryLight = Color(0xFF38A3A5);
-  static const Color accent = Color(0xFF3BCC97);
-  static const Color accentLight = Color(0xFF57CC99);
+  // Brand Default Colors (Elyxia DNA)
+  static const Color primaryDefault = Color(0xFF22577A);
+  static const Color primaryDarkDefault = Color(0xFF16384F);
+  static const Color primaryLightDefault = Color(0xFF38A3A5);
+  static const Color accentDefault = Color(0xFF3BCC97);
+  static const Color accentLightDefault = Color(0xFF57CC99);
+
+  // Valeurs par défaut directes
+  static const Color primary = primaryDefault;
+  static const Color primaryDark = primaryDarkDefault;
+  static const Color primaryLight = primaryLightDefault;
+  static const Color accent = accentDefault;
+  static const Color accentLight = accentLightDefault;
 
   // Backgrounds & Surface
   static const Color background = Color(0xFFF8FAFC);
@@ -32,4 +39,18 @@ class AppColors {
   // Borders
   static const Color border = Color(0xFFE2E8F0);
   static const Color borderStrong = Color(0xFFCBD5E1);
+
+  /// Helper pour convertir une chaîne hexadécimale (ex: "#22577A") en Color
+  static Color fromHex(String? hexString, {Color defaultColor = primaryDefault}) {
+    if (hexString == null || hexString.isEmpty) return defaultColor;
+    final clean = hexString.replaceAll('#', '').trim();
+    if (clean.length == 6) {
+      final val = int.tryParse('FF$clean', radix: 16);
+      if (val != null) return Color(val);
+    } else if (clean.length == 8) {
+      final val = int.tryParse(clean, radix: 16);
+      if (val != null) return Color(val);
+    }
+    return defaultColor;
+  }
 }

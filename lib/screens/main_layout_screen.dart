@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 
 import '../data/database_helper.dart';
+import '../models/academic_year.dart';
 import '../models/app_settings.dart';
+import '../models/app_user.dart';
 import '../models/exam.dart';
 import '../models/school_class.dart';
 import '../models/student.dart';
@@ -19,7 +21,18 @@ import 'settings_screen.dart';
 import 'students_screen.dart';
 
 class MainLayoutScreen extends StatefulWidget {
-  const MainLayoutScreen({super.key});
+  final AppUser currentUser;
+  final AcademicYear initialYear;
+  final VoidCallback onLogout;
+  final VoidCallback onThemeChanged;
+
+  const MainLayoutScreen({
+    super.key,
+    required this.currentUser,
+    required this.initialYear,
+    required this.onLogout,
+    required this.onThemeChanged,
+  });
 
   @override
   State<MainLayoutScreen> createState() => _MainLayoutScreenState();
@@ -30,6 +43,9 @@ class _MainLayoutScreenState extends State<MainLayoutScreen> {
   bool _isLoading = true;
 
   AppSettings? _settings;
+  List<AcademicYear> _academicYears = [];
+  AcademicYear? _selectedYear;
+
   List<Exam> _exams = [];
   Exam? _selectedExam;
 
@@ -45,6 +61,7 @@ class _MainLayoutScreenState extends State<MainLayoutScreen> {
   @override
   void initState() {
     super.initState();
+    _selectedYear = widget.initialYear;
     _loadInitialData();
   }
 
@@ -53,13 +70,15 @@ class _MainLayoutScreenState extends State<MainLayoutScreen> {
 
     final db = DatabaseHelper.instance;
     final settings = await db.getSettings();
-    final exams = await db.getExams();
-    final activeExam = await db.getActiveExam();
+    final years = await db.getAcademicYears();
+    final activeYear = _selectedYear ?? await db.getActiveAcademicYear();
+
+    final exams = await db.getExams(academicYear: activeYear.name);
+    final activeExam = await db.getActiveExam(academicYear: activeYear.name);
     final classes = await db.getClasses();
 
     SchoolClass? defaultClass;
     if (classes.isNotEmpty) {
-      // Préférence pour Terminale D ou la première classe
       defaultClass = classes.firstWhere(
         (c) => c.name.contains('Terminale D'),
         orElse: () => classes.first,
@@ -67,6 +86,8 @@ class _MainLayoutScreenState extends State<MainLayoutScreen> {
     }
 
     _settings = settings;
+    _academicYears = years;
+    _selectedYear = activeYear;
     _exams = exams;
     _selectedExam = activeExam ?? (exams.isNotEmpty ? exams.first : null);
     _classes = classes;
@@ -89,7 +110,10 @@ class _MainLayoutScreenState extends State<MainLayoutScreen> {
 
     final db = DatabaseHelper.instance;
     final subs = await db.getSubjectsForClass(_selectedClass!.id!);
-    final studs = await db.getStudentsForClass(_selectedClass!.id!);
+    final studs = await db.getStudentsForClass(
+      _selectedClass!.id!,
+      academicYear: _selectedYear?.name,
+    );
     final mrks = await db.getMarksForExamAndClass(_selectedExam!.id!, _selectedClass!.id!);
 
     final res = CalculationService.computeClassResults(
@@ -102,6 +126,25 @@ class _MainLayoutScreenState extends State<MainLayoutScreen> {
     _subjects = subs;
     _students = studs;
     _results = res;
+  }
+
+  void _onYearChanged(AcademicYear newYear) async {
+    setState(() {
+      _selectedYear = newYear;
+      _isLoading = true;
+    });
+
+    final db = DatabaseHelper.instance;
+    final exams = await db.getExams(academicYear: newYear.name);
+    final activeExam = await db.getActiveExam(academicYear: newYear.name);
+
+    _exams = exams;
+    _selectedExam = activeExam ?? (exams.isNotEmpty ? exams.first : null);
+
+    await _loadClassData();
+    if (mounted) {
+      setState(() => _isLoading = false);
+    }
   }
 
   void _onClassChanged(SchoolClass newClass) async {
@@ -129,15 +172,18 @@ class _MainLayoutScreenState extends State<MainLayoutScreen> {
   void _onDataChanged() async {
     final db = DatabaseHelper.instance;
     final settings = await db.getSettings();
-    final exams = await db.getExams();
+    final years = await db.getAcademicYears();
+    final exams = await db.getExams(academicYear: _selectedYear?.name);
     final classes = await db.getClasses();
 
     setState(() {
       _settings = settings;
+      _academicYears = years;
       _exams = exams;
       _classes = classes;
     });
 
+    widget.onThemeChanged();
     await _loadClassData();
     if (mounted) {
       setState(() {});
@@ -147,23 +193,25 @@ class _MainLayoutScreenState extends State<MainLayoutScreen> {
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
-      return const Scaffold(
+      return Scaffold(
         backgroundColor: AppColors.background,
         body: Center(
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              CircularProgressIndicator(color: AppColors.primary),
-              SizedBox(height: 16),
-              Text(
-                "Initialisation de la base SQL Elyxia EB...",
-                style: TextStyle(fontWeight: FontWeight.bold, color: AppColors.primary),
+              CircularProgressIndicator(color: AppColors.fromHex(_settings?.primaryColorHex)),
+              const SizedBox(height: 16),
+              const Text(
+                "Chargement des données de l'examen...",
+                style: TextStyle(fontWeight: FontWeight.bold),
               ),
             ],
           ),
         ),
       );
     }
+
+    final isYearClosed = _selectedYear?.isClosed ?? false;
 
     Widget content;
     switch (_selectedNavIndex) {
@@ -189,6 +237,7 @@ class _MainLayoutScreenState extends State<MainLayoutScreen> {
           subjects: _subjects,
           students: _students,
           onMarksSaved: _onDataChanged,
+          isReadOnly: isYearClosed,
         );
         break;
       case 2:
@@ -236,15 +285,21 @@ class _MainLayoutScreenState extends State<MainLayoutScreen> {
           schoolClass: _selectedClass!,
           students: _students,
           onStudentsChanged: _onDataChanged,
+          isReadOnly: isYearClosed,
+          academicYear: _selectedYear?.name ?? '2025-2026',
         );
         break;
       case 6:
         content = SettingsScreen(
           settings: _settings!,
+          academicYears: _academicYears,
+          activeYear: _selectedYear,
           exams: _exams,
           activeExam: _selectedExam,
           classes: _classes,
+          currentUser: widget.currentUser,
           onSettingsUpdated: _onDataChanged,
+          onYearChanged: _onYearChanged,
         );
         break;
       default:
@@ -259,12 +314,17 @@ class _MainLayoutScreenState extends State<MainLayoutScreen> {
             selectedIndex: _selectedNavIndex,
             onItemSelected: (idx) => setState(() => _selectedNavIndex = idx),
             settings: _settings,
+            academicYears: _academicYears,
+            selectedYear: _selectedYear,
+            onYearChanged: _onYearChanged,
             exams: _exams,
             selectedExam: _selectedExam,
             onExamChanged: _onExamChanged,
             classes: _classes,
             selectedClass: _selectedClass,
             onClassChanged: _onClassChanged,
+            currentUser: widget.currentUser,
+            onLogout: widget.onLogout,
           ),
           Expanded(child: content),
         ],

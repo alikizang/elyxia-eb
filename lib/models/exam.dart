@@ -33,4 +33,20 @@ class Exam {
     if (id != null) map['id'] = id;
     return map;
   }
+
+  Exam copyWith({
+    int? id,
+    String? title,
+    String? sessionDate,
+    String? academicYear,
+    bool? isActive,
+  }) {
+    return Exam(
+      id: id ?? this.id,
+      title: title ?? this.title,
+      sessionDate: sessionDate ?? this.sessionDate,
+      academicYear: academicYear ?? this.academicYear,
+      isActive: isActive ?? this.isActive,
+    );
+  }
 }

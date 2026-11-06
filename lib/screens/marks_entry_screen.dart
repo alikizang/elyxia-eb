@@ -15,6 +15,7 @@ class MarksEntryScreen extends StatefulWidget {
   final List<Subject> subjects;
   final List<Student> students;
   final VoidCallback onMarksSaved;
+  final bool isReadOnly;
 
   const MarksEntryScreen({
     super.key,
@@ -23,6 +24,7 @@ class MarksEntryScreen extends StatefulWidget {
     required this.subjects,
     required this.students,
     required this.onMarksSaved,
+    this.isReadOnly = false,
   });
 
   @override
@@ -196,6 +198,38 @@ class _MarksEntryScreenState extends State<MarksEntryScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          if (widget.isReadOnly) ...[
+            Container(
+              margin: const EdgeInsets.only(bottom: 16),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              decoration: BoxDecoration(
+                color: Colors.red.shade50,
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: Colors.red.shade200),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.lock, color: Colors.red.shade700, size: 22),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          "Année Académique Clôturée (Mode Consultation)",
+                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.red.shade900),
+                        ),
+                        Text(
+                          "Cette année scolaire est archivée. La saisie et modification des notes sont verrouillées.",
+                          style: TextStyle(fontSize: 12, color: Colors.red.shade700),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
           // En-tête : Sélecteur de Matière + Boutons d'Action
           Container(
             padding: const EdgeInsets.all(20),
@@ -266,7 +300,7 @@ class _MarksEntryScreenState extends State<MarksEntryScreen> {
                 const SizedBox(width: 16),
                 // Bouton Enregistrer
                 ElevatedButton.icon(
-                  onPressed: _isSaving ? null : _saveAllMarks,
+                  onPressed: (widget.isReadOnly || _isSaving) ? null : _saveAllMarks,
                   icon: _isSaving
                       ? const SizedBox(
                           width: 16,
@@ -422,14 +456,16 @@ class _MarksEntryScreenState extends State<MarksEntryScreen> {
                                           Checkbox(
                                             value: isAbsent,
                                             activeColor: AppColors.error,
-                                            onChanged: (val) {
-                                              setState(() {
-                                                _absentStates[sid] = val ?? false;
-                                                if (val == true) {
-                                                  controller.text = "";
-                                                }
-                                              });
-                                            },
+                                            onChanged: widget.isReadOnly
+                                                ? null
+                                                : (val) {
+                                                    setState(() {
+                                                      _absentStates[sid] = val ?? false;
+                                                      if (val == true) {
+                                                        controller.text = "";
+                                                      }
+                                                    });
+                                                  },
                                           ),
                                           const Text("ABS", style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
                                         ],
@@ -441,7 +477,7 @@ class _MarksEntryScreenState extends State<MarksEntryScreen> {
                                       child: TextField(
                                         controller: controller,
                                         focusNode: focusNode,
-                                        enabled: !isAbsent,
+                                        enabled: !isAbsent && !widget.isReadOnly,
                                         keyboardType: const TextInputType.numberWithOptions(decimal: true),
                                         style: TextStyle(
                                           fontWeight: FontWeight.bold,

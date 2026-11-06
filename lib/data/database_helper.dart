@@ -3,7 +3,9 @@ import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
+import '../models/academic_year.dart';
 import '../models/app_settings.dart';
+import '../models/app_user.dart';
 import '../models/exam.dart';
 import '../models/mark.dart';
 import '../models/school_class.dart';
@@ -36,11 +38,17 @@ class DatabaseHelper {
     }
 
     final path = p.join(ebDir.path, filePath);
-    return await openDatabase(
+    final db = await openDatabase(
       path,
-      version: 1,
+      version: 2,
       onCreate: _createDB,
+      onUpgrade: _upgradeDB,
     );
+
+    // Migration et vérification dynamique des tables et colonnes
+    await _ensureTablesAndColumns(db);
+
+    return db;
   }
 
   Future<void> _createDB(Database db, int version) async {
@@ -50,18 +58,48 @@ class DatabaseHelper {
         id INTEGER PRIMARY KEY,
         school_name TEXT NOT NULL,
         school_sub_title TEXT NOT NULL,
+        school_slogan TEXT NOT NULL,
         school_address TEXT NOT NULL,
+        school_po_box TEXT NOT NULL,
+        school_city TEXT NOT NULL,
         school_phone TEXT NOT NULL,
         school_email TEXT NOT NULL,
         academic_year TEXT NOT NULL,
         republic_header TEXT NOT NULL,
         director_title TEXT NOT NULL,
         director_name TEXT NOT NULL,
-        jury_president_title TEXT NOT NULL
+        jury_president_title TEXT NOT NULL,
+        primary_color TEXT NOT NULL DEFAULT '#22577A',
+        accent_color TEXT NOT NULL DEFAULT '#3BCC97',
+        logo_base64 TEXT
       )
     ''');
 
-    // 2. Classes (Premières et Terminales - Bac 1 et Bac 2)
+    // 2. Années Académiques
+    await db.execute('''
+      CREATE TABLE academic_years (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL UNIQUE,
+        is_current INTEGER NOT NULL DEFAULT 0,
+        is_closed INTEGER NOT NULL DEFAULT 0,
+        closed_at TEXT,
+        notes TEXT
+      )
+    ''');
+
+    // 3. Utilisateurs & Authentification
+    await db.execute('''
+      CREATE TABLE users (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        username TEXT NOT NULL UNIQUE,
+        password TEXT NOT NULL,
+        full_name TEXT NOT NULL,
+        role TEXT NOT NULL DEFAULT 'admin',
+        created_at TEXT NOT NULL
+      )
+    ''');
+
+    // 4. Classes (Premières et Terminales - Bac 1 et Bac 2)
     await db.execute('''
       CREATE TABLE classes (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -72,7 +110,7 @@ class DatabaseHelper {
       )
     ''');
 
-    // 3. Matières & Coefficients
+    // 5. Matières & Coefficients
     await db.execute('''
       CREATE TABLE subjects (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -81,11 +119,13 @@ class DatabaseHelper {
         code TEXT NOT NULL,
         coefficient REAL NOT NULL,
         order_index INTEGER NOT NULL,
+        teacher_name TEXT NOT NULL DEFAULT '',
+        is_optional INTEGER NOT NULL DEFAULT 0,
         FOREIGN KEY (class_id) REFERENCES classes (id) ON DELETE CASCADE
       )
     ''');
 
-    // 4. Élèves
+    // 6. Élèves
     await db.execute('''
       CREATE TABLE students (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -97,22 +137,25 @@ class DatabaseHelper {
         gender TEXT NOT NULL,
         birth_date TEXT NOT NULL,
         birth_place TEXT NOT NULL,
+        is_repeater INTEGER NOT NULL DEFAULT 0,
+        academic_year TEXT NOT NULL DEFAULT '2025-2026',
         FOREIGN KEY (class_id) REFERENCES classes (id) ON DELETE CASCADE
       )
     ''');
 
-    // 5. Examens Blancs
+    // 7. Examens Blancs
     await db.execute('''
       CREATE TABLE exams (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         title TEXT NOT NULL,
         session_date TEXT NOT NULL,
         academic_year TEXT NOT NULL,
-        is_active INTEGER NOT NULL DEFAULT 1
+        is_active INTEGER NOT NULL DEFAULT 1,
+        is_closed INTEGER NOT NULL DEFAULT 0
       )
     ''');
 
-    // 6. Notes
+    // 8. Notes
     await db.execute('''
       CREATE TABLE marks (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -132,19 +175,130 @@ class DatabaseHelper {
     await _seedInitialData(db);
   }
 
+  Future<void> _upgradeDB(Database db, int oldVersion, int newVersion) async {
+    // Migration gérée dynamiquement par _ensureTablesAndColumns
+  }
+
+  Future<void> _ensureTablesAndColumns(Database db) async {
+    // Vérification de la table 'academic_years'
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS academic_years (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL UNIQUE,
+        is_current INTEGER NOT NULL DEFAULT 0,
+        is_closed INTEGER NOT NULL DEFAULT 0,
+        closed_at TEXT,
+        notes TEXT
+      )
+    ''');
+
+    // Seed années académiques si vide
+    final yrRows = await db.rawQuery('SELECT COUNT(*) as count FROM academic_years');
+    final yrCount = (yrRows.first['count'] as num?)?.toInt() ?? 0;
+    if (yrCount == 0) {
+      await db.insert('academic_years', {
+        'name': '2024-2025',
+        'is_current': 0,
+        'is_closed': 1,
+        'closed_at': '30/06/2025',
+        'notes': 'Année précédente clôturée',
+      });
+      await db.insert('academic_years', {
+        'name': '2025-2026',
+        'is_current': 1,
+        'is_closed': 0,
+        'closed_at': null,
+        'notes': 'Année scolaire en cours',
+      });
+      await db.insert('academic_years', {
+        'name': '2026-2027',
+        'is_current': 0,
+        'is_closed': 0,
+        'closed_at': null,
+        'notes': 'Prochaine session',
+      });
+    }
+
+    // Vérification de la table 'users'
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS users (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        username TEXT NOT NULL UNIQUE,
+        password TEXT NOT NULL,
+        full_name TEXT NOT NULL,
+        role TEXT NOT NULL DEFAULT 'admin',
+        created_at TEXT NOT NULL
+      )
+    ''');
+
+    // Seed admin par défaut si vide
+    final userRows = await db.rawQuery('SELECT COUNT(*) as count FROM users');
+    final userCount = (userRows.first['count'] as num?)?.toInt() ?? 0;
+    if (userCount == 0) {
+      await db.insert('users', {
+        'username': 'admin',
+        'password': 'admin123',
+        'full_name': 'Direction Générale',
+        'role': 'admin',
+        'created_at': DateTime.now().toIso8601String(),
+      });
+      await db.insert('users', {
+        'username': 'enseignant',
+        'password': 'prof123',
+        'full_name': 'Enseignant / Saisie',
+        'role': 'teacher',
+        'created_at': DateTime.now().toIso8601String(),
+      });
+    }
+
+    // Colonnes dynamiques dans 'settings'
+    await _safeAddColumn(db, 'settings', 'school_slogan', "TEXT NOT NULL DEFAULT 'Discipline - Travail - Succès'");
+    await _safeAddColumn(db, 'settings', 'school_po_box', "TEXT NOT NULL DEFAULT '23 BP 124 Lomé-TOGO'");
+    await _safeAddColumn(db, 'settings', 'school_city', "TEXT NOT NULL DEFAULT 'Zopomahé, Sanguéra — Lomé-TOGO'");
+    await _safeAddColumn(db, 'settings', 'primary_color', "TEXT NOT NULL DEFAULT '#22577A'");
+    await _safeAddColumn(db, 'settings', 'accent_color', "TEXT NOT NULL DEFAULT '#3BCC97'");
+    await _safeAddColumn(db, 'settings', 'logo_base64', "TEXT");
+
+    // Colonnes dynamiques dans 'students'
+    await _safeAddColumn(db, 'students', 'is_repeater', "INTEGER NOT NULL DEFAULT 0");
+    await _safeAddColumn(db, 'students', 'academic_year', "TEXT NOT NULL DEFAULT '2025-2026'");
+
+    // Colonnes dynamiques dans 'subjects'
+    await _safeAddColumn(db, 'subjects', 'teacher_name', "TEXT NOT NULL DEFAULT ''");
+    await _safeAddColumn(db, 'subjects', 'is_optional', "INTEGER NOT NULL DEFAULT 0");
+
+    // Colonnes dynamiques dans 'exams'
+    await _safeAddColumn(db, 'exams', 'is_closed', "INTEGER NOT NULL DEFAULT 0");
+  }
+
+  Future<void> _safeAddColumn(Database db, String table, String column, String definition) async {
+    try {
+      final info = await db.rawQuery('PRAGMA table_info($table)');
+      final exists = info.any((row) => row['name'] == column);
+      if (!exists) {
+        await db.execute('ALTER TABLE $table ADD COLUMN $column $definition');
+      }
+    } catch (_) {}
+  }
+
   Future<void> _seedInitialData(Database db) async {
     // 1. Paramètres initiaux
     final defaultSettings = AppSettings(
       schoolName: "COMPLEXE SCOLAIRE LES VICTORIEUX",
-      schoolSubTitle: "Lycée d'Enseignement Général — BAC 1 & BAC 2",
-      schoolAddress: "Lomé, République Togolaise",
-      schoolPhone: "+228 90 12 34 56 / 99 87 65 43",
-      schoolEmail: "direction@lesvictorieux-togo.org",
+      schoolSubTitle: "Lycée Privé Laïc — BAC 1 & BAC 2",
+      schoolSlogan: "Discipline - Travail - Succès",
+      schoolAddress: "Zopomahé, Sanguéra",
+      schoolPoBox: "23 BP 124 Lomé-TOGO",
+      schoolCity: "Lomé - TOGO",
+      schoolPhone: "+228 90 41 07 07 / 90 12 34 56",
+      schoolEmail: "direction@lesvictorieux.tg",
       academicYear: "2025-2026",
-      republicHeader: "RÉPUBLIQUE TOGOLAISE\nTravail - Liberté - Patrie\nMINISTÈRE DES ENSEIGNEMENTS PRIMAIRE, SECONDAIRE ET TECHNIQUE",
-      directorTitle: "Le Chef d'Établissement",
-      directorName: "M. le Proviseur",
+      republicHeader: "RÉPUBLIQUE TOGOLAISE\nTravail - Liberté - Patrie\nMINISTÈRE DE L'EDUCATION NATIONALE",
+      directorTitle: "Le Directeur / Chef d'Établissement",
+      directorName: "Direction Générale",
       juryPresidentTitle: "Le Président du Jury",
+      primaryColorHex: "#22577A",
+      accentColorHex: "#3BCC97",
     );
     await db.insert('settings', defaultSettings.toMap());
 
@@ -154,6 +308,7 @@ class DatabaseHelper {
       'session_date': 'Mars 2026',
       'academic_year': '2025-2026',
       'is_active': 1,
+      'is_closed': 0,
     });
 
     // 3. Classes de Premières et Terminales (Togo)
@@ -172,89 +327,45 @@ class DatabaseHelper {
       classIds[c['name']!] = id;
     }
 
-    // 4. Matières et Coefficients officiels pour le Togo
-    // --- 1ère A4 ---
+    // 4. Matières et Coefficients officiels pour le Togo avec professeurs exemples
     await _insertSubjects(db, classIds['1ère A4']!, [
-      Subject(classId: classIds['1ère A4']!, name: 'Français', code: 'FRA', coefficient: 4.0, orderIndex: 1),
-      Subject(classId: classIds['1ère A4']!, name: 'Philosophie', code: 'PHILO', coefficient: 2.0, orderIndex: 2),
-      Subject(classId: classIds['1ère A4']!, name: 'Histoire - Géographie', code: 'HIST-GEO', coefficient: 3.0, orderIndex: 3),
-      Subject(classId: classIds['1ère A4']!, name: 'Anglais (LV1)', code: 'ANG', coefficient: 3.0, orderIndex: 4),
-      Subject(classId: classIds['1ère A4']!, name: 'Allemand / Espagnol (LV2)', code: 'LV2', coefficient: 3.0, orderIndex: 5),
-      Subject(classId: classIds['1ère A4']!, name: 'Mathématiques', code: 'MATH', coefficient: 2.0, orderIndex: 6),
-      Subject(classId: classIds['1ère A4']!, name: 'Sciences de la Vie et de la Terre', code: 'SVT', coefficient: 2.0, orderIndex: 7),
-      Subject(classId: classIds['1ère A4']!, name: 'Sciences Physiques', code: 'SP', coefficient: 1.0, orderIndex: 8),
-      Subject(classId: classIds['1ère A4']!, name: 'Éducation Civique et Morale', code: 'ECM', coefficient: 1.0, orderIndex: 9),
-      Subject(classId: classIds['1ère A4']!, name: 'Éducation Physique et Sportive', code: 'EPS', coefficient: 1.0, orderIndex: 10),
+      Subject(classId: classIds['1ère A4']!, name: 'Français', code: 'FRA', coefficient: 4.0, orderIndex: 1, teacherName: 'AGBOZOUHOE Kodjovi'),
+      Subject(classId: classIds['1ère A4']!, name: 'Philosophie', code: 'PHILO', coefficient: 2.0, orderIndex: 2, teacherName: 'SANTE Sédou'),
+      Subject(classId: classIds['1ère A4']!, name: 'Histoire - Géographie', code: 'HIST-GEO', coefficient: 3.0, orderIndex: 3, teacherName: 'ADJAYI Dosseh'),
+      Subject(classId: classIds['1ère A4']!, name: 'Anglais (LV1)', code: 'ANG', coefficient: 3.0, orderIndex: 4, teacherName: 'AGBASSE Kossi Sondé'),
+      Subject(classId: classIds['1ère A4']!, name: 'Allemand / Espagnol (LV2)', code: 'LV2', coefficient: 3.0, orderIndex: 5, teacherName: 'TAGBA Lidaou'),
+      Subject(classId: classIds['1ère A4']!, name: 'Mathématiques', code: 'MATH', coefficient: 2.0, orderIndex: 6, teacherName: 'KEMEY Dotsè'),
+      Subject(classId: classIds['1ère A4']!, name: 'Sciences de la Vie et de la Terre', code: 'SVT', coefficient: 2.0, orderIndex: 7, teacherName: 'APALOO Essi Dogbeda'),
+      Subject(classId: classIds['1ère A4']!, name: 'Sciences Physiques', code: 'SP', coefficient: 1.0, orderIndex: 8, teacherName: 'KPATCHIDE Amou Noël'),
+      Subject(classId: classIds['1ère A4']!, name: 'Éducation Civique et Morale', code: 'ECM', coefficient: 1.0, orderIndex: 9, teacherName: 'NINGUEMPIEN L.'),
+      Subject(classId: classIds['1ère A4']!, name: 'Éducation Physique et Sportive', code: 'EPS', coefficient: 1.0, orderIndex: 10, teacherName: 'NANGBANDA Bilizam'),
     ]);
 
-    // --- 1ère D ---
     await _insertSubjects(db, classIds['1ère D']!, [
-      Subject(classId: classIds['1ère D']!, name: 'Sciences de la Vie et de la Terre', code: 'SVT', coefficient: 4.0, orderIndex: 1),
-      Subject(classId: classIds['1ère D']!, name: 'Mathématiques', code: 'MATH', coefficient: 4.0, orderIndex: 2),
-      Subject(classId: classIds['1ère D']!, name: 'Sciences Physiques', code: 'SP', coefficient: 4.0, orderIndex: 3),
-      Subject(classId: classIds['1ère D']!, name: 'Français', code: 'FRA', coefficient: 3.0, orderIndex: 4),
-      Subject(classId: classIds['1ère D']!, name: 'Philosophie', code: 'PHILO', coefficient: 2.0, orderIndex: 5),
-      Subject(classId: classIds['1ère D']!, name: 'Anglais (LV1)', code: 'ANG', coefficient: 2.0, orderIndex: 6),
-      Subject(classId: classIds['1ère D']!, name: 'Histoire - Géographie', code: 'HIST-GEO', coefficient: 2.0, orderIndex: 7),
-      Subject(classId: classIds['1ère D']!, name: 'Éducation Civique et Morale', code: 'ECM', coefficient: 1.0, orderIndex: 8),
-      Subject(classId: classIds['1ère D']!, name: 'Éducation Physique et Sportive', code: 'EPS', coefficient: 1.0, orderIndex: 9),
+      Subject(classId: classIds['1ère D']!, name: 'Sciences de la Vie et de la Terre', code: 'SVT', coefficient: 4.0, orderIndex: 1, teacherName: 'APALOO Essi Dogbeda'),
+      Subject(classId: classIds['1ère D']!, name: 'Mathématiques', code: 'MATH', coefficient: 4.0, orderIndex: 2, teacherName: 'KEMEY Dotsè'),
+      Subject(classId: classIds['1ère D']!, name: 'Sciences Physiques', code: 'SP', coefficient: 4.0, orderIndex: 3, teacherName: 'KPATCHIDE Amou Noël'),
+      Subject(classId: classIds['1ère D']!, name: 'Français', code: 'FRA', coefficient: 3.0, orderIndex: 4, teacherName: 'AGBOZOUHOE Kodjovi'),
+      Subject(classId: classIds['1ère D']!, name: 'Philosophie', code: 'PHILO', coefficient: 2.0, orderIndex: 5, teacherName: 'SANTE Sédou'),
+      Subject(classId: classIds['1ère D']!, name: 'Anglais (LV1)', code: 'ANG', coefficient: 2.0, orderIndex: 6, teacherName: 'AGBASSE Kossi Sondé'),
+      Subject(classId: classIds['1ère D']!, name: 'Histoire - Géographie', code: 'HIST-GEO', coefficient: 2.0, orderIndex: 7, teacherName: 'ADJAYI Dosseh'),
+      Subject(classId: classIds['1ère D']!, name: 'Éducation Civique et Morale', code: 'ECM', coefficient: 1.0, orderIndex: 8, teacherName: 'NINGUEMPIEN L.'),
+      Subject(classId: classIds['1ère D']!, name: 'Éducation Physique et Sportive', code: 'EPS', coefficient: 1.0, orderIndex: 9, teacherName: 'NANGBANDA Bilizam'),
     ]);
 
-    // --- 1ère C ---
-    await _insertSubjects(db, classIds['1ère C']!, [
-      Subject(classId: classIds['1ère C']!, name: 'Mathématiques', code: 'MATH', coefficient: 6.0, orderIndex: 1),
-      Subject(classId: classIds['1ère C']!, name: 'Sciences Physiques', code: 'SP', coefficient: 5.0, orderIndex: 2),
-      Subject(classId: classIds['1ère C']!, name: 'Sciences de la Vie et de la Terre', code: 'SVT', coefficient: 2.0, orderIndex: 3),
-      Subject(classId: classIds['1ère C']!, name: 'Français', code: 'FRA', coefficient: 3.0, orderIndex: 4),
-      Subject(classId: classIds['1ère C']!, name: 'Philosophie', code: 'PHILO', coefficient: 2.0, orderIndex: 5),
-      Subject(classId: classIds['1ère C']!, name: 'Anglais (LV1)', code: 'ANG', coefficient: 2.0, orderIndex: 6),
-      Subject(classId: classIds['1ère C']!, name: 'Histoire - Géographie', code: 'HIST-GEO', coefficient: 2.0, orderIndex: 7),
-      Subject(classId: classIds['1ère C']!, name: 'Éducation Civique et Morale', code: 'ECM', coefficient: 1.0, orderIndex: 8),
-      Subject(classId: classIds['1ère C']!, name: 'Éducation Physique et Sportive', code: 'EPS', coefficient: 1.0, orderIndex: 9),
+    await _insertSubjects(db, classIds['Terminale D']!, [
+      Subject(classId: classIds['Terminale D']!, name: 'Sciences de la Vie et de la Terre', code: 'SVT', coefficient: 5.0, orderIndex: 1, teacherName: 'APALOO Essi Dogbeda'),
+      Subject(classId: classIds['Terminale D']!, name: 'Sciences Physiques', code: 'SP', coefficient: 4.0, orderIndex: 2, teacherName: 'KPATCHIDE Amou Noël'),
+      Subject(classId: classIds['Terminale D']!, name: 'Mathématiques', code: 'MATH', coefficient: 4.0, orderIndex: 3, teacherName: 'KEMEY Dotsè'),
+      Subject(classId: classIds['Terminale D']!, name: 'Philosophie', code: 'PHILO', coefficient: 2.0, orderIndex: 4, teacherName: 'SANTE Sédou'),
+      Subject(classId: classIds['Terminale D']!, name: 'Français', code: 'FRA', coefficient: 2.0, orderIndex: 5, teacherName: 'AGBOZOUHOE Kodjovi'),
+      Subject(classId: classIds['Terminale D']!, name: 'Anglais (LV1)', code: 'ANG', coefficient: 2.0, orderIndex: 6, teacherName: 'AGBASSE Kossi Sondé'),
+      Subject(classId: classIds['Terminale D']!, name: 'Histoire - Géographie', code: 'HIST-GEO', coefficient: 2.0, orderIndex: 7, teacherName: 'ADJAYI Dosseh'),
+      Subject(classId: classIds['Terminale D']!, name: 'Éducation Civique et Morale', code: 'ECM', coefficient: 1.0, orderIndex: 8, teacherName: 'NINGUEMPIEN L.'),
+      Subject(classId: classIds['Terminale D']!, name: 'Éducation Physique et Sportive', code: 'EPS', coefficient: 1.0, orderIndex: 9, teacherName: 'NANGBANDA Bilizam'),
     ]);
 
-    // --- Terminale A4 ---
-    await _insertSubjects(db, classIds['Terminale A4']!, [
-      Subject(classId: classIds['Terminale A4']!, name: 'Philosophie', code: 'PHILO', coefficient: 5.0, orderIndex: 1),
-      Subject(classId: classIds['Terminale A4']!, name: 'Français', code: 'FRA', coefficient: 4.0, orderIndex: 2),
-      Subject(classId: classIds['Terminale A4']!, name: 'Histoire - Géographie', code: 'HIST-GEO', coefficient: 3.0, orderIndex: 3),
-      Subject(classId: classIds['Terminale A4']!, name: 'Anglais (LV1)', code: 'ANG', coefficient: 3.0, orderIndex: 4),
-      Subject(classId: classIds['Terminale A4']!, name: 'Allemand / Espagnol (LV2)', code: 'LV2', coefficient: 3.0, orderIndex: 5),
-      Subject(classId: classIds['Terminale A4']!, name: 'Mathématiques', code: 'MATH', coefficient: 2.0, orderIndex: 6),
-      Subject(classId: classIds['Terminale A4']!, name: 'Sciences de la Vie et de la Terre', code: 'SVT', coefficient: 2.0, orderIndex: 7),
-      Subject(classId: classIds['Terminale A4']!, name: 'Sciences Physiques', code: 'SP', coefficient: 1.0, orderIndex: 8),
-      Subject(classId: classIds['Terminale A4']!, name: 'Éducation Civique et Morale', code: 'ECM', coefficient: 1.0, orderIndex: 9),
-      Subject(classId: classIds['Terminale A4']!, name: 'Éducation Physique et Sportive', code: 'EPS', coefficient: 1.0, orderIndex: 10),
-    ]);
-
-    // --- Terminale D ---
-    final tleDSubjects = [
-      Subject(classId: classIds['Terminale D']!, name: 'Sciences de la Vie et de la Terre', code: 'SVT', coefficient: 5.0, orderIndex: 1),
-      Subject(classId: classIds['Terminale D']!, name: 'Sciences Physiques', code: 'SP', coefficient: 4.0, orderIndex: 2),
-      Subject(classId: classIds['Terminale D']!, name: 'Mathématiques', code: 'MATH', coefficient: 4.0, orderIndex: 3),
-      Subject(classId: classIds['Terminale D']!, name: 'Philosophie', code: 'PHILO', coefficient: 2.0, orderIndex: 4),
-      Subject(classId: classIds['Terminale D']!, name: 'Français', code: 'FRA', coefficient: 2.0, orderIndex: 5),
-      Subject(classId: classIds['Terminale D']!, name: 'Anglais (LV1)', code: 'ANG', coefficient: 2.0, orderIndex: 6),
-      Subject(classId: classIds['Terminale D']!, name: 'Histoire - Géographie', code: 'HIST-GEO', coefficient: 2.0, orderIndex: 7),
-      Subject(classId: classIds['Terminale D']!, name: 'Éducation Civique et Morale', code: 'ECM', coefficient: 1.0, orderIndex: 8),
-      Subject(classId: classIds['Terminale D']!, name: 'Éducation Physique et Sportive', code: 'EPS', coefficient: 1.0, orderIndex: 9),
-    ];
-    await _insertSubjects(db, classIds['Terminale D']!, tleDSubjects);
-
-    // --- Terminale C ---
-    await _insertSubjects(db, classIds['Terminale C']!, [
-      Subject(classId: classIds['Terminale C']!, name: 'Mathématiques', code: 'MATH', coefficient: 6.0, orderIndex: 1),
-      Subject(classId: classIds['Terminale C']!, name: 'Sciences Physiques', code: 'SP', coefficient: 5.0, orderIndex: 2),
-      Subject(classId: classIds['Terminale C']!, name: 'Sciences de la Vie et de la Terre', code: 'SVT', coefficient: 3.0, orderIndex: 3),
-      Subject(classId: classIds['Terminale C']!, name: 'Philosophie', code: 'PHILO', coefficient: 2.0, orderIndex: 4),
-      Subject(classId: classIds['Terminale C']!, name: 'Français', code: 'FRA', coefficient: 2.0, orderIndex: 5),
-      Subject(classId: classIds['Terminale C']!, name: 'Anglais (LV1)', code: 'ANG', coefficient: 2.0, orderIndex: 6),
-      Subject(classId: classIds['Terminale C']!, name: 'Histoire - Géographie', code: 'HIST-GEO', coefficient: 2.0, orderIndex: 7),
-      Subject(classId: classIds['Terminale C']!, name: 'Éducation Civique et Morale', code: 'ECM', coefficient: 1.0, orderIndex: 8),
-      Subject(classId: classIds['Terminale C']!, name: 'Éducation Physique et Sportive', code: 'EPS', coefficient: 1.0, orderIndex: 9),
-    ]);
-
-    // 5. Exemples d'élèves pour la Terminale D afin de permettre un test direct
+    // 5. Exemples d'élèves pour la Terminale D
     final sampleStudents = [
       Student(
         classId: classIds['Terminale D']!,
@@ -265,6 +376,8 @@ class DatabaseHelper {
         gender: 'M',
         birthDate: '14/05/2007',
         birthPlace: 'Lomé',
+        isRepeater: false,
+        academicYear: '2025-2026',
       ),
       Student(
         classId: classIds['Terminale D']!,
@@ -275,6 +388,8 @@ class DatabaseHelper {
         gender: 'F',
         birthDate: '22/09/2007',
         birthPlace: 'Aného',
+        isRepeater: false,
+        academicYear: '2025-2026',
       ),
       Student(
         classId: classIds['Terminale D']!,
@@ -285,6 +400,8 @@ class DatabaseHelper {
         gender: 'M',
         birthDate: '03/01/2008',
         birthPlace: 'Kpalimé',
+        isRepeater: true,
+        academicYear: '2025-2026',
       ),
       Student(
         classId: classIds['Terminale D']!,
@@ -295,6 +412,8 @@ class DatabaseHelper {
         gender: 'F',
         birthDate: '19/11/2007',
         birthPlace: 'Lomé',
+        isRepeater: false,
+        academicYear: '2025-2026',
       ),
       Student(
         classId: classIds['Terminale D']!,
@@ -305,6 +424,8 @@ class DatabaseHelper {
         gender: 'M',
         birthDate: '07/07/2007',
         birthPlace: 'Atakpamé',
+        isRepeater: false,
+        academicYear: '2025-2026',
       ),
     ];
 
@@ -325,15 +446,10 @@ class DatabaseHelper {
 
     // Notes d'exemples réalistes
     final sampleScores = [
-      // KOUDOSSOU Koffi Jean-Luc (Excellente moyenne ~15.20)
       [16.5, 15.0, 16.0, 14.0, 13.5, 15.0, 14.0, 16.0, 17.0],
-      // ADJALLÉ Afiwa Blandine (Très bonne moyenne ~13.80)
       [14.0, 13.5, 14.0, 13.0, 14.5, 14.0, 13.0, 15.0, 16.0],
-      // MENSAH Kokou Mawunyo (Moyenne passable ~11.10)
       [11.5, 10.0, 11.0, 10.5, 11.0, 12.0, 10.0, 13.0, 15.0],
-      // LAWSON Latré Pierrette (Moyenne moyenne ~10.40)
       [10.0, 10.5, 9.5, 11.0, 10.0, 11.5, 10.0, 12.0, 14.0],
-      // AMOUZOU Kodjo François (Ajourné ~8.70)
       [8.0, 8.5, 7.5, 9.0, 9.5, 10.0, 9.0, 11.0, 13.0],
     ];
 
@@ -374,6 +490,106 @@ class DatabaseHelper {
   Future<void> updateSettings(AppSettings settings) async {
     final db = await database;
     await db.update('settings', settings.toMap(), where: 'id = ?', whereArgs: [settings.id]);
+  }
+
+  // ==================== ANNÉES ACADÉMIQUES ====================
+  Future<List<AcademicYear>> getAcademicYears() async {
+    final db = await database;
+    final res = await db.query('academic_years', orderBy: 'name DESC');
+    return res.map((e) => AcademicYear.fromMap(e)).toList();
+  }
+
+  Future<AcademicYear> getActiveAcademicYear() async {
+    final db = await database;
+    final res = await db.query('academic_years', where: 'is_current = 1', limit: 1);
+    if (res.isNotEmpty) {
+      return AcademicYear.fromMap(res.first);
+    }
+    final all = await getAcademicYears();
+    if (all.isNotEmpty) return all.first;
+    return AcademicYear(name: '2025-2026', isCurrent: true, isClosed: false);
+  }
+
+  Future<int> addAcademicYear(AcademicYear year) async {
+    final db = await database;
+    if (year.isCurrent) {
+      await db.update('academic_years', {'is_current': 0});
+    }
+    final id = await db.insert('academic_years', year.toMap());
+    if (year.isCurrent) {
+      final settings = await getSettings();
+      await updateSettings(settings.copyWith(academicYear: year.name));
+    }
+    return id;
+  }
+
+  Future<void> setCurrentAcademicYear(int id) async {
+    final db = await database;
+    await db.update('academic_years', {'is_current': 0});
+    await db.update('academic_years', {'is_current': 1}, where: 'id = ?', whereArgs: [id]);
+    final active = await db.query('academic_years', where: 'id = ?', whereArgs: [id]);
+    if (active.isNotEmpty) {
+      final yr = AcademicYear.fromMap(active.first);
+      final settings = await getSettings();
+      await updateSettings(settings.copyWith(academicYear: yr.name));
+    }
+  }
+
+  Future<void> toggleCloseAcademicYear(int id, bool isClosed) async {
+    final db = await database;
+    final now = isClosed ? DateTime.now().toIso8601String() : null;
+    await db.update(
+      'academic_years',
+      {'is_closed': isClosed ? 1 : 0, 'closed_at': now},
+      where: 'id = ?',
+      whereArgs: [id],
+    );
+  }
+
+  Future<void> deleteAcademicYear(int id) async {
+    final db = await database;
+    await db.delete('academic_years', where: 'id = ?', whereArgs: [id]);
+  }
+
+  // ==================== UTILISATEURS & AUTH ====================
+  Future<AppUser?> authenticate(String username, String password) async {
+    final db = await database;
+    final res = await db.query(
+      'users',
+      where: 'LOWER(username) = ? AND password = ?',
+      whereArgs: [username.trim().toLowerCase(), password],
+      limit: 1,
+    );
+    if (res.isNotEmpty) {
+      return AppUser.fromMap(res.first);
+    }
+    return null;
+  }
+
+  Future<List<AppUser>> getUsers() async {
+    final db = await database;
+    final res = await db.query('users', orderBy: 'id ASC');
+    return res.map((e) => AppUser.fromMap(e)).toList();
+  }
+
+  Future<int> addUser(AppUser user) async {
+    final db = await database;
+    return await db.insert('users', user.toMap());
+  }
+
+  Future<void> updateUser(AppUser user) async {
+    final db = await database;
+    await db.update('users', user.toMap(), where: 'id = ?', whereArgs: [user.id]);
+  }
+
+  Future<void> updatePassword(int userId, String newPassword) async {
+    final db = await database;
+    await db.update('users', {'password': newPassword}, where: 'id = ?', whereArgs: [userId]);
+  }
+
+  Future<void> deleteUser(int id) async {
+    final db = await database;
+    await db.delete('users', where: 'id = ?', whereArgs: [id]);
   }
 
   // ==================== CLASSES ====================
@@ -433,14 +649,33 @@ class DatabaseHelper {
   }
 
   // ==================== STUDENTS ====================
-  Future<List<Student>> getStudentsForClass(int classId) async {
+  Future<List<Student>> getStudentsForClass(int classId, {String? academicYear}) async {
     final db = await database;
-    final res = await db.query(
-      'students',
-      where: 'class_id = ?',
-      whereArgs: [classId],
-      orderBy: 'table_number ASC, last_name ASC',
-    );
+    List<Map<String, dynamic>> res;
+    if (academicYear != null && academicYear.isNotEmpty) {
+      res = await db.query(
+        'students',
+        where: 'class_id = ? AND academic_year = ?',
+        whereArgs: [classId, academicYear],
+        orderBy: 'table_number ASC, last_name ASC',
+      );
+      // Si aucun élève pour cette année précise, on charge les élèves de la classe
+      if (res.isEmpty) {
+        res = await db.query(
+          'students',
+          where: 'class_id = ?',
+          whereArgs: [classId],
+          orderBy: 'table_number ASC, last_name ASC',
+        );
+      }
+    } else {
+      res = await db.query(
+        'students',
+        where: 'class_id = ?',
+        whereArgs: [classId],
+        orderBy: 'table_number ASC, last_name ASC',
+      );
+    }
     return res.map((e) => Student.fromMap(e)).toList();
   }
 
@@ -469,17 +704,40 @@ class DatabaseHelper {
   }
 
   // ==================== EXAMS ====================
-  Future<List<Exam>> getExams() async {
+  Future<List<Exam>> getExams({String? academicYear}) async {
     final db = await database;
-    final res = await db.query('exams', orderBy: 'id DESC');
+    List<Map<String, dynamic>> res;
+    if (academicYear != null && academicYear.isNotEmpty) {
+      res = await db.query(
+        'exams',
+        where: 'academic_year = ?',
+        whereArgs: [academicYear],
+        orderBy: 'id DESC',
+      );
+      if (res.isEmpty) {
+        res = await db.query('exams', orderBy: 'id DESC');
+      }
+    } else {
+      res = await db.query('exams', orderBy: 'id DESC');
+    }
     return res.map((e) => Exam.fromMap(e)).toList();
   }
 
-  Future<Exam?> getActiveExam() async {
+  Future<Exam?> getActiveExam({String? academicYear}) async {
     final db = await database;
-    final res = await db.query('exams', where: 'is_active = 1', limit: 1);
+    List<Map<String, dynamic>> res;
+    if (academicYear != null && academicYear.isNotEmpty) {
+      res = await db.query(
+        'exams',
+        where: 'academic_year = ? AND is_active = 1',
+        whereArgs: [academicYear],
+        limit: 1,
+      );
+    } else {
+      res = await db.query('exams', where: 'is_active = 1', limit: 1);
+    }
     if (res.isNotEmpty) return Exam.fromMap(res.first);
-    final all = await getExams();
+    final all = await getExams(academicYear: academicYear);
     if (all.isNotEmpty) return all.first;
     return null;
   }
@@ -579,22 +837,35 @@ class DatabaseHelper {
     final buffer = StringBuffer();
     buffer.writeln("-- ========================================================");
     buffer.writeln("-- Elyxia EB - Sauvegarde SQL Portative (Windows & macOS)");
-    buffer.writeln("-- Établissement : Complexe Scolaire Les Victorieux");
+    buffer.writeln("-- Export intégral : Données, Années, Utilisateurs, Paramètres");
+    buffer.writeln("-- Date d'export : ${DateTime.now().toIso8601String()}");
     buffer.writeln("-- ========================================================\n");
 
-    final tables = ['settings', 'classes', 'subjects', 'students', 'exams', 'marks'];
+    final tables = [
+      'settings',
+      'academic_years',
+      'users',
+      'classes',
+      'subjects',
+      'students',
+      'exams',
+      'marks',
+    ];
+
     for (final table in tables) {
-      final rows = await db.query(table);
-      buffer.writeln("\n-- Table: $table (${rows.length} enregistrements)");
-      for (final row in rows) {
-        final cols = row.keys.join(', ');
-        final values = row.values.map((v) {
-          if (v == null) return "NULL";
-          if (v is num) return "$v";
-          return "'${v.toString().replaceAll("'", "''")}'";
-        }).join(', ');
-        buffer.writeln("INSERT OR REPLACE INTO $table ($cols) VALUES ($values);");
-      }
+      try {
+        final rows = await db.query(table);
+        buffer.writeln("\n-- Table: $table (${rows.length} enregistrements)");
+        for (final row in rows) {
+          final cols = row.keys.join(', ');
+          final values = row.values.map((v) {
+            if (v == null) return "NULL";
+            if (v is num) return "$v";
+            return "'${v.toString().replaceAll("'", "''")}'";
+          }).join(', ');
+          buffer.writeln("INSERT OR REPLACE INTO $table ($cols) VALUES ($values);");
+        }
+      } catch (_) {}
     }
     return buffer.toString();
   }

@@ -1,5 +1,9 @@
+import 'dart:convert' show base64Decode;
 import 'package:flutter/material.dart';
+
+import '../models/academic_year.dart';
 import '../models/app_settings.dart';
+import '../models/app_user.dart';
 import '../models/exam.dart';
 import '../models/school_class.dart';
 import '../theme/app_colors.dart';
@@ -8,35 +12,59 @@ class Sidebar extends StatelessWidget {
   final int selectedIndex;
   final Function(int) onItemSelected;
   final AppSettings? settings;
+  final List<AcademicYear> academicYears;
+  final AcademicYear? selectedYear;
+  final Function(AcademicYear) onYearChanged;
   final List<Exam> exams;
   final Exam? selectedExam;
   final Function(Exam) onExamChanged;
   final List<SchoolClass> classes;
   final SchoolClass? selectedClass;
   final Function(SchoolClass) onClassChanged;
+  final AppUser? currentUser;
+  final VoidCallback onLogout;
 
   const Sidebar({
     super.key,
     required this.selectedIndex,
     required this.onItemSelected,
     required this.settings,
+    required this.academicYears,
+    required this.selectedYear,
+    required this.onYearChanged,
     required this.exams,
     required this.selectedExam,
     required this.onExamChanged,
     required this.classes,
     required this.selectedClass,
     required this.onClassChanged,
+    required this.currentUser,
+    required this.onLogout,
   });
+
+  Widget _buildSchoolLogo() {
+    if (settings?.logoBase64 != null && settings!.logoBase64!.isNotEmpty) {
+      try {
+        final bytes = base64Decode(settings!.logoBase64!);
+        return Image.memory(bytes, fit: BoxFit.contain);
+      } catch (_) {}
+    }
+    return Image.asset('assets/images/school_logo_default.jpg', fit: BoxFit.contain);
+  }
 
   @override
   Widget build(BuildContext context) {
+    final primaryColor = AppColors.fromHex(settings?.primaryColorHex);
+    final accentColor = AppColors.fromHex(settings?.accentColorHex);
+    final isYearClosed = selectedYear?.isClosed ?? false;
+
     return Container(
-      width: 260,
+      width: 270,
       decoration: const BoxDecoration(
-        color: AppColors.primaryDark,
+        color: Color(0xFF0F172A), // Slate 900
         boxShadow: [
           BoxShadow(
-            color: Colors.black12,
+            color: Colors.black26,
             blurRadius: 10,
             offset: Offset(2, 0),
           ),
@@ -46,7 +74,7 @@ class Sidebar extends StatelessWidget {
         children: [
           // Logo & School Branding Header
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 20),
             decoration: BoxDecoration(
               border: Border(
                 bottom: BorderSide(
@@ -61,97 +89,115 @@ class Sidebar extends StatelessWidget {
                 Row(
                   children: [
                     Container(
-                      width: 40,
-                      height: 40,
+                      width: 44,
+                      height: 44,
                       decoration: BoxDecoration(
-                        color: AppColors.surface,
-                        borderRadius: BorderRadius.circular(10),
+                        color: Colors.white,
+                        shape: BoxShape.circle,
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.2),
+                            color: Colors.black.withValues(alpha: 0.3),
                             blurRadius: 6,
                           ),
                         ],
                       ),
-                      padding: const EdgeInsets.all(4),
-                      child: Image.asset(
-                        'assets/images/logo.png',
-                        fit: BoxFit.contain,
-                      ),
+                      child: ClipOval(child: _buildSchoolLogo()),
                     ),
                     const SizedBox(width: 12),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          "ELYXIA EB",
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                            letterSpacing: 1.2,
-                          ),
-                        ),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: AppColors.accent,
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                          child: const Text(
-                            "EXAMEN BLANC",
-                            style: TextStyle(
-                              color: AppColors.primaryDark,
-                              fontSize: 9,
-                              fontWeight: FontWeight.w900,
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            settings?.schoolName ?? "CS LES VICTORIEUX",
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                              letterSpacing: 0.5,
                             ),
                           ),
-                        ),
-                      ],
+                          const SizedBox(height: 2),
+                          Text(
+                            settings?.schoolSlogan ?? "Discipline - Travail - Succès",
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              color: Colors.white70,
+                              fontSize: 9,
+                              fontStyle: FontStyle.italic,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 16),
-                Text(
-                  settings?.schoolName ?? "CS LES VICTORIEUX",
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: Colors.white70,
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600,
+                const SizedBox(height: 14),
+
+                // SÉLECTEUR RAPIDE D'ANNÉE ACADÉMIQUE
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: isYearClosed ? Colors.red.withValues(alpha: 0.15) : Colors.white.withValues(alpha: 0.08),
+                    borderRadius: BorderRadius.circular(6),
+                    border: Border.all(
+                      color: isYearClosed ? Colors.red.withValues(alpha: 0.5) : Colors.white.withValues(alpha: 0.15),
+                    ),
                   ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  "Année : ${settings?.academicYear ?? '2025-2026'}",
-                  style: const TextStyle(
-                    color: AppColors.accentLight,
-                    fontSize: 11,
-                    fontWeight: FontWeight.w500,
+                  child: Row(
+                    children: [
+                      Icon(
+                        isYearClosed ? Icons.lock_outline : Icons.calendar_today_outlined,
+                        size: 14,
+                        color: isYearClosed ? Colors.redAccent : accentColor,
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: DropdownButtonHideUnderline(
+                          child: DropdownButton<AcademicYear>(
+                            value: selectedYear,
+                            isDense: true,
+                            dropdownColor: const Color(0xFF1E293B),
+                            icon: const Icon(Icons.arrow_drop_down, color: Colors.white70, size: 18),
+                            style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold),
+                            items: academicYears.map((yr) {
+                              return DropdownMenuItem<AcademicYear>(
+                                value: yr,
+                                child: Text(
+                                  "${yr.name}${yr.isClosed ? ' 🔒 (Clôturée)' : ''}",
+                                  style: TextStyle(
+                                    color: yr.isClosed ? Colors.redAccent : Colors.white,
+                                    fontSize: 11,
+                                  ),
+                                ),
+                              );
+                            }).toList(),
+                            onChanged: (newYr) {
+                              if (newYr != null) onYearChanged(newYr);
+                            },
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ],
             ),
           ),
 
-          // Sélecteurs rapides (Examen & Classe)
+          // Sélecteurs rapides : Examen & Classe
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.04),
-              border: Border(
-                bottom: BorderSide(
-                  color: Colors.white.withValues(alpha: 0.08),
-                  width: 1,
-                ),
-              ),
-            ),
+            color: Colors.black.withValues(alpha: 0.2),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                // Sélecteur d'examen
                 const Text(
-                  "EXAMEN BLANC EN COURS",
+                  "SESSION D'EXAMEN",
                   style: TextStyle(
                     color: Colors.white54,
                     fontSize: 9.5,
@@ -159,39 +205,43 @@ class Sidebar extends StatelessWidget {
                     letterSpacing: 0.8,
                   ),
                 ),
-                const SizedBox(height: 6),
+                const SizedBox(height: 4),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10),
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
                   decoration: BoxDecoration(
                     color: Colors.white.withValues(alpha: 0.08),
                     borderRadius: BorderRadius.circular(6),
-                    border: Border.all(color: Colors.white.withValues(alpha: 0.15)),
                   ),
                   child: DropdownButtonHideUnderline(
                     child: DropdownButton<Exam>(
-                      isExpanded: true,
                       value: selectedExam,
-                      dropdownColor: AppColors.primaryDark,
-                      icon: const Icon(Icons.arrow_drop_down, color: AppColors.accent),
+                      isExpanded: true,
+                      isDense: true,
+                      dropdownColor: const Color(0xFF1E293B),
+                      icon: const Icon(Icons.keyboard_arrow_down, color: Colors.white70, size: 18),
                       style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
-                      items: exams.map((exam) {
+                      items: exams.map((e) {
                         return DropdownMenuItem<Exam>(
-                          value: exam,
+                          value: e,
                           child: Text(
-                            exam.title,
+                            e.title,
                             overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(color: Colors.white, fontSize: 11.5),
                           ),
                         );
                       }).toList(),
-                      onChanged: (exam) {
-                        if (exam != null) onExamChanged(exam);
+                      onChanged: (newExam) {
+                        if (newExam != null) onExamChanged(newExam);
                       },
                     ),
                   ),
                 ),
-                const SizedBox(height: 10),
+
+                const SizedBox(height: 8),
+
+                // Sélecteur de classe
                 const Text(
-                  "CLASSE SÉLECTIONNÉE",
+                  "CLASSE CONCERNÉE",
                   style: TextStyle(
                     color: Colors.white54,
                     fontSize: 9.5,
@@ -199,32 +249,32 @@ class Sidebar extends StatelessWidget {
                     letterSpacing: 0.8,
                   ),
                 ),
-                const SizedBox(height: 6),
+                const SizedBox(height: 4),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10),
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
                   decoration: BoxDecoration(
                     color: Colors.white.withValues(alpha: 0.08),
                     borderRadius: BorderRadius.circular(6),
-                    border: Border.all(color: Colors.white.withValues(alpha: 0.15)),
                   ),
                   child: DropdownButtonHideUnderline(
                     child: DropdownButton<SchoolClass>(
-                      isExpanded: true,
                       value: selectedClass,
-                      dropdownColor: AppColors.primaryDark,
-                      icon: const Icon(Icons.arrow_drop_down, color: AppColors.accent),
+                      isExpanded: true,
+                      isDense: true,
+                      dropdownColor: const Color(0xFF1E293B),
+                      icon: const Icon(Icons.keyboard_arrow_down, color: Colors.white70, size: 18),
                       style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
                       items: classes.map((c) {
                         return DropdownMenuItem<SchoolClass>(
                           value: c,
                           child: Text(
-                            "${c.name} (${c.examType})",
-                            overflow: TextOverflow.ellipsis,
+                            "${c.name} (${c.series})",
+                            style: const TextStyle(color: Colors.white, fontSize: 11.5),
                           ),
                         );
                       }).toList(),
-                      onChanged: (c) {
-                        if (c != null) onClassChanged(c);
+                      onChanged: (newClass) {
+                        if (newClass != null) onClassChanged(newClass);
                       },
                     ),
                   ),
@@ -233,55 +283,27 @@ class Sidebar extends StatelessWidget {
             ),
           ),
 
-          // Menu de navigation
+          // Menu de navigation principal
           Expanded(
             child: ListView(
-              padding: const EdgeInsets.symmetric(vertical: 12),
+              padding: const EdgeInsets.symmetric(vertical: 10),
               children: [
-                _buildNavItem(
-                  index: 0,
-                  icon: Icons.dashboard_rounded,
-                  title: "Tableau de Bord",
-                ),
-                _buildNavItem(
-                  index: 1,
-                  icon: Icons.edit_note_rounded,
-                  title: "Saisie des Notes",
-                ),
-                _buildNavItem(
-                  index: 2,
-                  icon: Icons.military_tech_rounded,
-                  title: "Résultats & Rangs",
-                ),
-                _buildNavItem(
-                  index: 3,
-                  icon: Icons.print_rounded,
-                  title: "Relevés de Notes (A5)",
-                  badge: "Format A5",
-                ),
-                _buildNavItem(
-                  index: 4,
-                  icon: Icons.table_chart_rounded,
-                  title: "Procès-Verbal (PV A4)",
-                ),
-                _buildNavItem(
-                  index: 5,
-                  icon: Icons.people_alt_rounded,
-                  title: "Candidats / Élèves",
-                ),
-                _buildNavItem(
-                  index: 6,
-                  icon: Icons.settings_suggest_rounded,
-                  title: "Paramètres & Matières",
-                ),
+                _buildNavItem(0, "Tableau de Bord", Icons.dashboard_outlined, primaryColor, accentColor),
+                _buildNavItem(1, "Saisie des Notes", Icons.edit_note_outlined, primaryColor, accentColor),
+                _buildNavItem(2, "Résultats & Délibération", Icons.leaderboard_outlined, primaryColor, accentColor),
+                _buildNavItem(3, "Relevés de Notes (A5)", Icons.picture_as_pdf_outlined, primaryColor, accentColor),
+                _buildNavItem(4, "Procès-Verbal (A4)", Icons.assignment_outlined, primaryColor, accentColor),
+                _buildNavItem(5, "Gestion des Élèves", Icons.people_outline, primaryColor, accentColor),
+                _buildNavItem(6, "Paramètres & Portabilité", Icons.settings_outlined, primaryColor, accentColor),
               ],
             ),
           ),
 
-          // Offline Status indicator
+          // Profil Utilisateur Connecté & Bouton Déconnexion
           Container(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
+              color: Colors.black.withValues(alpha: 0.35),
               border: Border(
                 top: BorderSide(
                   color: Colors.white.withValues(alpha: 0.08),
@@ -291,22 +313,39 @@ class Sidebar extends StatelessWidget {
             ),
             child: Row(
               children: [
-                Container(
-                  width: 8,
-                  height: 8,
-                  decoration: const BoxDecoration(
-                    color: AppColors.accent,
-                    shape: BoxShape.circle,
+                CircleAvatar(
+                  radius: 16,
+                  backgroundColor: primaryColor,
+                  child: Text(
+                    (currentUser?.fullName.isNotEmpty ?? false) ? currentUser!.fullName[0].toUpperCase() : "A",
+                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12),
                   ),
                 ),
-                const SizedBox(width: 8),
-                const Text(
-                  "100% Hors Ligne • SQL Local",
-                  style: TextStyle(
-                    color: Colors.white54,
-                    fontSize: 10,
-                    fontWeight: FontWeight.w500,
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        currentUser?.fullName ?? "Admin Principal",
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(color: Colors.white, fontSize: 11.5, fontWeight: FontWeight.bold),
+                      ),
+                      Text(
+                        currentUser?.roleLabel ?? "Administrateur",
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(color: Colors.white54, fontSize: 10),
+                      ),
+                    ],
                   ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.logout, size: 18, color: Colors.white60),
+                  tooltip: "Déconnexion",
+                  onPressed: onLogout,
                 ),
               ],
             ),
@@ -316,64 +355,35 @@ class Sidebar extends StatelessWidget {
     );
   }
 
-  Widget _buildNavItem({
-    required int index,
-    required IconData icon,
-    required String title,
-    String? badge,
-  }) {
+  Widget _buildNavItem(int index, String label, IconData icon, Color primaryColor, Color accentColor) {
     final isSelected = selectedIndex == index;
 
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
-      child: Material(
-        color: isSelected ? AppColors.primary : Colors.transparent,
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
+      decoration: BoxDecoration(
+        color: isSelected ? primaryColor.withValues(alpha: 0.8) : Colors.transparent,
         borderRadius: BorderRadius.circular(8),
-        child: InkWell(
-          onTap: () => onItemSelected(index),
-          borderRadius: BorderRadius.circular(8),
-          hoverColor: Colors.white.withValues(alpha: 0.06),
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
-            child: Row(
-              children: [
-                Icon(
-                  icon,
-                  size: 20,
-                  color: isSelected ? AppColors.accent : Colors.white70,
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    title,
-                    style: TextStyle(
-                      color: isSelected ? Colors.white : Colors.white70,
-                      fontSize: 13,
-                      fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-                    ),
-                  ),
-                ),
-                if (badge != null)
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: AppColors.accent.withValues(alpha: 0.2),
-                      borderRadius: BorderRadius.circular(4),
-                      border: Border.all(color: AppColors.accent.withValues(alpha: 0.4), width: 0.8),
-                    ),
-                    child: Text(
-                      badge,
-                      style: const TextStyle(
-                        color: AppColors.accentLight,
-                        fontSize: 9,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-              ],
-            ),
+        border: isSelected
+            ? Border.all(color: accentColor.withValues(alpha: 0.6), width: 1)
+            : null,
+      ),
+      child: ListTile(
+        dense: true,
+        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 0),
+        leading: Icon(
+          icon,
+          color: isSelected ? accentColor : Colors.white70,
+          size: 19,
+        ),
+        title: Text(
+          label,
+          style: TextStyle(
+            color: isSelected ? Colors.white : Colors.white70,
+            fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+            fontSize: 12.5,
           ),
         ),
+        onTap: () => onItemSelected(index),
       ),
     );
   }

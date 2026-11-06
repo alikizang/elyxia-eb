@@ -14,12 +14,16 @@ class StudentsScreen extends StatefulWidget {
   final SchoolClass schoolClass;
   final List<Student> students;
   final VoidCallback onStudentsChanged;
+  final bool isReadOnly;
+  final String academicYear;
 
   const StudentsScreen({
     super.key,
     required this.schoolClass,
     required this.students,
     required this.onStudentsChanged,
+    this.isReadOnly = false,
+    this.academicYear = '2025-2026',
   });
 
   @override
@@ -42,6 +46,38 @@ class _StudentsScreenState extends State<StudentsScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          if (widget.isReadOnly) ...[
+            Container(
+              margin: const EdgeInsets.only(bottom: 16),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              decoration: BoxDecoration(
+                color: Colors.red.shade50,
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: Colors.red.shade200),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.lock, color: Colors.red.shade700, size: 22),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          "Année Académique Clôturée (Mode Consultation)",
+                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.red.shade900),
+                        ),
+                        Text(
+                          "La liste des élèves est verrouillée pour cette session. Les ajouts et modifications sont désactivés.",
+                          style: TextStyle(fontSize: 12, color: Colors.red.shade700),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
           // En-tête + Boutons d'Action
           Container(
             padding: const EdgeInsets.all(20),
@@ -89,7 +125,7 @@ class _StudentsScreenState extends State<StudentsScreen> {
                 const SizedBox(width: 10),
                 // Bouton Importer CSV
                 OutlinedButton.icon(
-                  onPressed: () => _importCsv(context),
+                  onPressed: widget.isReadOnly ? null : () => _importCsv(context),
                   icon: const Icon(Icons.upload_file_rounded, size: 18),
                   label: const Text("Importer CSV"),
                   style: OutlinedButton.styleFrom(
@@ -102,7 +138,7 @@ class _StudentsScreenState extends State<StudentsScreen> {
                 const SizedBox(width: 10),
                 // Bouton Nouveau Candidat
                 ElevatedButton.icon(
-                  onPressed: () => _showAddEditStudentDialog(context),
+                  onPressed: widget.isReadOnly ? null : () => _showAddEditStudentDialog(context),
                   icon: const Icon(Icons.person_add_rounded, size: 18),
                   label: const Text("Nouveau Candidat"),
                   style: ElevatedButton.styleFrom(
@@ -260,12 +296,12 @@ class _StudentsScreenState extends State<StudentsScreen> {
                                           IconButton(
                                             icon: const Icon(Icons.edit_outlined, size: 18, color: AppColors.primary),
                                             tooltip: "Modifier",
-                                            onPressed: () => _showAddEditStudentDialog(context, student: student),
+                                            onPressed: widget.isReadOnly ? null : () => _showAddEditStudentDialog(context, student: student),
                                           ),
                                           IconButton(
                                             icon: const Icon(Icons.delete_outline, size: 18, color: AppColors.error),
                                             tooltip: "Supprimer",
-                                            onPressed: () => _confirmDelete(context, student),
+                                            onPressed: widget.isReadOnly ? null : () => _confirmDelete(context, student),
                                           ),
                                         ],
                                       ),
@@ -292,6 +328,7 @@ class _StudentsScreenState extends State<StudentsScreen> {
     final lastNameCtrl = TextEditingController(text: student?.lastName ?? '');
     final firstNameCtrl = TextEditingController(text: student?.firstName ?? '');
     String gender = student?.gender ?? 'M';
+    bool isRepeater = student?.isRepeater ?? false;
     final birthDateCtrl = TextEditingController(text: student?.birthDate ?? '15/05/2007');
     final birthPlaceCtrl = TextEditingController(text: student?.birthPlace ?? 'Lomé');
 
@@ -359,6 +396,19 @@ class _StudentsScreenState extends State<StudentsScreen> {
                   const SizedBox(height: 12),
                   Row(
                     children: [
+                      Checkbox(
+                        value: isRepeater,
+                        onChanged: (val) => setDlgState(() => isRepeater = val ?? false),
+                      ),
+                      const Text(
+                        "Élève doublant(e) / redoublant(e) (Relevé officiel)",
+                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
                       Expanded(
                         child: TextField(
                           controller: birthDateCtrl,
@@ -399,6 +449,8 @@ class _StudentsScreenState extends State<StudentsScreen> {
                   gender: gender,
                   birthDate: birthDateCtrl.text.trim(),
                   birthPlace: birthPlaceCtrl.text.trim(),
+                  isRepeater: isRepeater,
+                  academicYear: widget.academicYear,
                 );
 
                 if (isEdit) {

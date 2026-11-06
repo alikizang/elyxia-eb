@@ -8,6 +8,8 @@ class Student {
   final String gender; // "M" ou "F"
   final String birthDate; // "JJ/MM/AAAA"
   final String birthPlace; // Ville ou lieu
+  final bool isRepeater; // Doublant: true/false (comme dans test.pdf)
+  final String academicYear; // Année académique rattachée
 
   Student({
     this.id,
@@ -19,6 +21,8 @@ class Student {
     required this.gender,
     this.birthDate = '',
     this.birthPlace = '',
+    this.isRepeater = false,
+    this.academicYear = '2025-2026',
   });
 
   String get fullName => '$lastName $firstName'.trim().toUpperCase();
@@ -34,6 +38,8 @@ class Student {
       gender: map['gender'] ?? 'M',
       birthDate: map['birth_date'] ?? '',
       birthPlace: map['birth_place'] ?? '',
+      isRepeater: (map['is_repeater'] ?? 0) == 1,
+      academicYear: map['academic_year'] ?? '2025-2026',
     );
   }
 
@@ -47,6 +53,8 @@ class Student {
       'gender': gender,
       'birth_date': birthDate,
       'birth_place': birthPlace,
+      'is_repeater': isRepeater ? 1 : 0,
+      'academic_year': academicYear,
     };
     if (id != null) map['id'] = id;
     return map;
@@ -62,6 +70,8 @@ class Student {
     String? gender,
     String? birthDate,
     String? birthPlace,
+    bool? isRepeater,
+    String? academicYear,
   }) {
     return Student(
       id: id ?? this.id,
@@ -73,6 +83,8 @@ class Student {
       gender: gender ?? this.gender,
       birthDate: birthDate ?? this.birthDate,
       birthPlace: birthPlace ?? this.birthPlace,
+      isRepeater: isRepeater ?? this.isRepeater,
+      academicYear: academicYear ?? this.academicYear,
     );
   }
 }
