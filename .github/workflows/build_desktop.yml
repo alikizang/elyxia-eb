@@ -1,0 +1,64 @@
+name: Build Elyxia EB Desktop (Windows & macOS)
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch: # Permet de lancer le build manuellement en 1 clic depuis GitHub
+
+jobs:
+  build-windows:
+    name: Build Windows (.exe)
+    runs-on: windows-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          cache: true
+
+      - name: Get Dependencies
+        run: flutter pub get
+
+      - name: Build Windows Executable
+        run: flutter build windows --release
+
+      - name: Archive Windows Release
+        uses: actions/upload-artifact@v4
+        with:
+          name: Elyxia_EB_Windows_Release
+          path: build/windows/x64/runner/Release/
+
+  build-macos:
+    name: Build macOS (.app / .zip)
+    runs-on: macos-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          cache: true
+
+      - name: Get Dependencies
+        run: flutter pub get
+
+      - name: Build macOS App
+        run: flutter build macos --release
+
+      - name: Zip macOS App
+        run: |
+          cd build/macos/Build/Products/Release
+          zip -r Elyxia_EB_macOS.zip elyxia_eb.app
+
+      - name: Archive macOS Release
+        uses: actions/upload-artifact@v4
+        with:
+          name: Elyxia_EB_macOS_Release
+          path: build/macos/Build/Products/Release/Elyxia_EB_macOS.zip
