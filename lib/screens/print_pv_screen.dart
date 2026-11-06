@@ -10,7 +10,7 @@ import '../models/subject.dart';
 import '../services/pdf_service.dart';
 import '../theme/app_colors.dart';
 
-class PrintPvScreen extends StatelessWidget {
+class PrintPvScreen extends StatefulWidget {
   final AppSettings settings;
   final Exam exam;
   final SchoolClass schoolClass;
@@ -27,19 +27,47 @@ class PrintPvScreen extends StatelessWidget {
   });
 
   @override
+  State<PrintPvScreen> createState() => _PrintPvScreenState();
+}
+
+class _PrintPvScreenState extends State<PrintPvScreen> {
+  double _zoomWidth = 950; // Largeur par défaut pour A4 Paysage
+
+  void _zoomIn() {
+    setState(() {
+      if (_zoomWidth < 1800) _zoomWidth += 100;
+    });
+  }
+
+  void _zoomOut() {
+    setState(() {
+      if (_zoomWidth > 600) _zoomWidth -= 100;
+    });
+  }
+
+  void _resetZoom() {
+    setState(() {
+      _zoomWidth = 950;
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
-    if (results.isEmpty) {
+    if (widget.results.isEmpty) {
       return const Center(
         child: Text("Aucun résultat disponible pour générer le Procès-Verbal."),
       );
     }
+
+    final primaryColor = AppColors.fromHex(widget.settings.primaryColorHex);
+    final zoomPercent = ((_zoomWidth / 950) * 100).round();
 
     return Padding(
       padding: const EdgeInsets.all(28),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // En-tête
+          // En-tête avec Zoom
           Container(
             padding: const EdgeInsets.all(18),
             decoration: BoxDecoration(
@@ -51,23 +79,74 @@ class PrintPvScreen extends StatelessWidget {
               ],
             ),
             child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
+                      Text(
                         "Procès-Verbal de Délibération (Format A4 Paysage)",
                         style: TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.bold,
-                          color: AppColors.primary,
+                          color: primaryColor,
                         ),
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        "${schoolClass.name} (${schoolClass.examType}) • ${exam.title} • Fiche récapitulative grand format pour affichage et archives",
+                        "${widget.schoolClass.name} (${widget.schoolClass.examType}) • ${widget.exam.title} • Fiche récapitulative grand format pour affichage et archives",
                         style: const TextStyle(color: AppColors.textSecondary, fontSize: 12),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 16),
+
+                // Barre de Zoom
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: AppColors.surfaceSubtle,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: AppColors.border),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.zoom_in, size: 18, color: AppColors.textSecondary),
+                      const SizedBox(width: 4),
+                      IconButton(
+                        icon: const Icon(Icons.remove, size: 16),
+                        tooltip: "Dézoomer",
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+                        onPressed: _zoomWidth > 600 ? _zoomOut : null,
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 6),
+                        child: Text(
+                          "$zoomPercent %",
+                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+                        ),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.add, size: 16),
+                        tooltip: "Zoomer",
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+                        onPressed: _zoomWidth < 1800 ? _zoomIn : null,
+                      ),
+                      const SizedBox(width: 4),
+                      TextButton(
+                        style: TextButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          minimumSize: Size.zero,
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        ),
+                        onPressed: _resetZoom,
+                        child: const Text("100%", style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
                       ),
                     ],
                   ),
@@ -92,17 +171,18 @@ class PrintPvScreen extends StatelessWidget {
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(12),
                 child: PdfPreview(
+                  maxPageWidth: _zoomWidth,
                   initialPageFormat: PdfPageFormat.a4.landscape,
                   canChangePageFormat: false,
                   canChangeOrientation: false,
                   canDebug: false,
-                  pdfFileName: "PV_Deliberation_${schoolClass.name.replaceAll(' ', '_')}_${exam.title.replaceAll(' ', '_')}.pdf",
+                  pdfFileName: "PV_Deliberation_${widget.schoolClass.name.replaceAll(' ', '_')}_${widget.exam.title.replaceAll(' ', '_')}.pdf",
                   build: (format) => PdfService.generatePvReport(
-                    settings: settings,
-                    exam: exam,
-                    schoolClass: schoolClass,
-                    subjects: subjects,
-                    results: results,
+                    settings: widget.settings,
+                    exam: widget.exam,
+                    schoolClass: widget.schoolClass,
+                    subjects: widget.subjects,
+                    results: widget.results,
                   ),
                 ),
               ),

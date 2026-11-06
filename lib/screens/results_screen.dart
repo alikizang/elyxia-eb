@@ -1,4 +1,5 @@
 import 'dart:convert' show utf8;
+import 'dart:math' as math;
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
@@ -200,7 +201,7 @@ class _ResultsScreenState extends State<ResultsScreen> {
 
           const SizedBox(height: 16),
 
-          // Tableau complet des délibérations
+          // Tableau complet des délibérations avec défilement horizontal fluide
           Expanded(
             child: Container(
               decoration: BoxDecoration(
@@ -211,173 +212,196 @@ class _ResultsScreenState extends State<ResultsScreen> {
                   BoxShadow(color: Colors.black12, blurRadius: 4, offset: Offset(0, 2)),
                 ],
               ),
-              child: Column(
-                children: [
-                  // Header
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                    decoration: const BoxDecoration(
-                      color: AppColors.primary,
-                      borderRadius: BorderRadius.only(
-                        topLeft: Radius.circular(11),
-                        topRight: Radius.circular(11),
-                      ),
-                    ),
-                    child: Row(
-                      children: [
-                        const SizedBox(width: 50, child: Text("RANG", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 11))),
-                        const SizedBox(width: 65, child: Text("N° TABLE", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 11))),
-                        const Expanded(flex: 3, child: Text("NOM & PRÉNOMS", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 11))),
-                        const SizedBox(width: 45, child: Text("SEXE", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 11))),
-                        ...widget.subjects.map(
-                          (sub) => SizedBox(
-                            width: 58,
-                            child: Text(
-                              "${sub.code}\n(${sub.coefficient.toInt()})",
-                              textAlign: TextAlign.center,
-                              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 10),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 80, child: Text("TOTAL PTS", textAlign: TextAlign.center, style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 11))),
-                        const SizedBox(width: 80, child: Text("MOYENNE", textAlign: TextAlign.center, style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 11))),
-                        const SizedBox(width: 90, child: Text("DÉCISION", textAlign: TextAlign.center, style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 11))),
-                        const SizedBox(width: 80, child: Text("MENTION", textAlign: TextAlign.center, style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 11))),
-                        const SizedBox(width: 90, child: Text("ACTION", textAlign: TextAlign.center, style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 11))),
-                      ],
-                    ),
-                  ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(11),
+                child: LayoutBuilder(
+                  builder: (context, constraints) {
+                    final double minTableWidth = 50 + 65 + 230 + 45 + (widget.subjects.length * 62.0) + 80 + 80 + 90 + 80 + 90 + 32;
+                    final double tableWidth = math.max(constraints.maxWidth, minTableWidth);
 
-                  // Lignes des élèves
-                  Expanded(
-                    child: filtered.isEmpty
-                        ? const Center(child: Text("Aucun candidat trouvé."))
-                        : ListView.separated(
-                            itemCount: filtered.length,
-                            separatorBuilder: (context, index) => const Divider(height: 1, color: AppColors.border),
-                            itemBuilder: (context, index) {
-                              final r = filtered[index];
-                              return Container(
-                                color: index % 2 == 1 ? AppColors.surfaceSubtle.withValues(alpha: 0.5) : Colors.white,
-                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    return Scrollbar(
+                      thumbVisibility: true,
+                      child: SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        child: SizedBox(
+                          width: tableWidth,
+                          height: constraints.maxHeight,
+                          child: Column(
+                            children: [
+                              // En-tête du tableau
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                                decoration: const BoxDecoration(
+                                  color: AppColors.primary,
+                                ),
                                 child: Row(
                                   children: [
-                                    SizedBox(
-                                      width: 50,
+                                    const SizedBox(width: 50, child: Text("RANG", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 11))),
+                                    const SizedBox(width: 65, child: Text("N° TABLE", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 11))),
+                                    const SizedBox(
+                                      width: 230,
                                       child: Text(
-                                        r.rankFormatted,
-                                        style: TextStyle(
-                                          fontWeight: FontWeight.bold,
-                                          fontSize: 12,
-                                          color: r.rank <= 3 ? AppColors.primary : AppColors.textPrimary,
-                                        ),
+                                        "NOM & PRÉNOMS",
+                                        style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 11),
                                       ),
                                     ),
-                                    SizedBox(
-                                      width: 65,
-                                      child: Text(
-                                        r.student.tableNumber,
-                                        style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 12),
-                                      ),
-                                    ),
-                                    Expanded(
-                                      flex: 3,
-                                      child: Text(
-                                        r.student.fullName,
-                                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
-                                      ),
-                                    ),
-                                    SizedBox(
-                                      width: 45,
-                                      child: Text(
-                                        r.student.gender,
-                                        style: const TextStyle(fontSize: 12),
-                                      ),
-                                    ),
-                                    // Notes par matière
-                                    ...r.grades.map(
-                                      (g) => SizedBox(
-                                        width: 58,
+                                    const SizedBox(width: 45, child: Text("SEXE", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 11))),
+                                    ...widget.subjects.map(
+                                      (sub) => SizedBox(
+                                        width: 62,
                                         child: Text(
-                                          g.scoreFormatted,
+                                          "${sub.code}\n(${sub.coefficient.toInt()})",
                                           textAlign: TextAlign.center,
-                                          style: TextStyle(
-                                            fontSize: 12,
-                                            fontWeight: FontWeight.w600,
-                                            color: g.isAbsent
-                                                ? AppColors.error
-                                                : ((g.score ?? 0) < 10 ? AppColors.error : AppColors.textPrimary),
-                                          ),
+                                          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 10),
                                         ),
                                       ),
                                     ),
-                                    // Total Points
-                                    SizedBox(
-                                      width: 80,
-                                      child: Text(
-                                        r.totalPointsFormatted,
-                                        textAlign: TextAlign.center,
-                                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: AppColors.primary),
-                                      ),
-                                    ),
-                                    // Moyenne /20
-                                    SizedBox(
-                                      width: 80,
-                                      child: Text(
-                                        "${r.averageFormatted} /20",
-                                        textAlign: TextAlign.center,
-                                        style: TextStyle(
-                                          fontWeight: FontWeight.bold,
-                                          fontSize: 13,
-                                          color: r.isAdmitted ? AppColors.success : AppColors.error,
-                                        ),
-                                      ),
-                                    ),
-                                    // Décision
-                                    SizedBox(
-                                      width: 90,
-                                      child: Container(
-                                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
-                                        decoration: BoxDecoration(
-                                          color: r.isAdmitted ? AppColors.successBg : AppColors.errorBg,
-                                          borderRadius: BorderRadius.circular(4),
-                                        ),
-                                        child: Text(
-                                          r.decision,
-                                          textAlign: TextAlign.center,
-                                          style: TextStyle(
-                                            fontSize: 10,
-                                            fontWeight: FontWeight.bold,
-                                            color: r.isAdmitted ? AppColors.success : AppColors.error,
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                    // Mention
-                                    SizedBox(
-                                      width: 80,
-                                      child: Text(
-                                        r.mention,
-                                        textAlign: TextAlign.center,
-                                        style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
-                                      ),
-                                    ),
-                                    // Bouton Action Relevé individuel
-                                    SizedBox(
-                                      width: 90,
-                                      child: IconButton(
-                                        icon: const Icon(Icons.print_outlined, size: 18, color: AppColors.primary),
-                                        tooltip: "Imprimer Relevé A5",
-                                        onPressed: () => widget.onPreviewSingleStudent(r),
-                                      ),
-                                    ),
+                                    const SizedBox(width: 80, child: Text("TOTAL PTS", textAlign: TextAlign.center, style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 11))),
+                                    const SizedBox(width: 80, child: Text("MOYENNE", textAlign: TextAlign.center, style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 11))),
+                                    const SizedBox(width: 90, child: Text("DÉCISION", textAlign: TextAlign.center, style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 11))),
+                                    const SizedBox(width: 80, child: Text("MENTION", textAlign: TextAlign.center, style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 11))),
+                                    const SizedBox(width: 90, child: Text("ACTION", textAlign: TextAlign.center, style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 11))),
                                   ],
                                 ),
-                              );
-                            },
+                              ),
+
+                              // Lignes des élèves
+                              Expanded(
+                                child: filtered.isEmpty
+                                    ? const Center(child: Text("Aucun candidat trouvé."))
+                                    : ListView.separated(
+                                        itemCount: filtered.length,
+                                        separatorBuilder: (context, index) => const Divider(height: 1, color: AppColors.border),
+                                        itemBuilder: (context, index) {
+                                          final r = filtered[index];
+                                          return Container(
+                                            color: index % 2 == 1 ? AppColors.surfaceSubtle.withValues(alpha: 0.5) : Colors.white,
+                                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                                            child: Row(
+                                              children: [
+                                                SizedBox(
+                                                  width: 50,
+                                                  child: Text(
+                                                    r.rankFormatted,
+                                                    style: TextStyle(
+                                                      fontWeight: FontWeight.bold,
+                                                      fontSize: 12,
+                                                      color: r.rank <= 3 ? AppColors.primary : AppColors.textPrimary,
+                                                    ),
+                                                  ),
+                                                ),
+                                                SizedBox(
+                                                  width: 65,
+                                                  child: Text(
+                                                    r.student.tableNumber,
+                                                    style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 12),
+                                                  ),
+                                                ),
+                                                SizedBox(
+                                                  width: 230,
+                                                  child: Text(
+                                                    r.student.fullName,
+                                                    overflow: TextOverflow.ellipsis,
+                                                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                                                  ),
+                                                ),
+                                                SizedBox(
+                                                  width: 45,
+                                                  child: Text(
+                                                    r.student.gender,
+                                                    style: const TextStyle(fontSize: 12),
+                                                  ),
+                                                ),
+                                                // Notes par matière
+                                                ...r.grades.map(
+                                                  (g) => SizedBox(
+                                                    width: 62,
+                                                    child: Text(
+                                                      g.scoreFormatted,
+                                                      textAlign: TextAlign.center,
+                                                      style: TextStyle(
+                                                        fontSize: 12,
+                                                        fontWeight: FontWeight.w600,
+                                                        color: g.isAbsent
+                                                            ? AppColors.error
+                                                            : ((g.score ?? 0) < 10 ? AppColors.error : AppColors.textPrimary),
+                                                      ),
+                                                    ),
+                                                  ),
+                                                ),
+                                                // Total Points
+                                                SizedBox(
+                                                  width: 80,
+                                                  child: Text(
+                                                    r.totalPointsFormatted,
+                                                    textAlign: TextAlign.center,
+                                                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: AppColors.primary),
+                                                  ),
+                                                ),
+                                                // Moyenne /20
+                                                SizedBox(
+                                                  width: 80,
+                                                  child: Text(
+                                                    "${r.averageFormatted} /20",
+                                                    textAlign: TextAlign.center,
+                                                    style: TextStyle(
+                                                      fontWeight: FontWeight.bold,
+                                                      fontSize: 13,
+                                                      color: r.isAdmitted ? AppColors.success : AppColors.error,
+                                                    ),
+                                                  ),
+                                                ),
+                                                // Décision
+                                                SizedBox(
+                                                  width: 90,
+                                                  child: Container(
+                                                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                                                    decoration: BoxDecoration(
+                                                      color: r.isAdmitted ? AppColors.successBg : AppColors.errorBg,
+                                                      borderRadius: BorderRadius.circular(4),
+                                                    ),
+                                                    child: Text(
+                                                      r.decision,
+                                                      textAlign: TextAlign.center,
+                                                      style: TextStyle(
+                                                        fontSize: 10,
+                                                        fontWeight: FontWeight.bold,
+                                                        color: r.isAdmitted ? AppColors.success : AppColors.error,
+                                                      ),
+                                                    ),
+                                                  ),
+                                                ),
+                                                // Mention
+                                                SizedBox(
+                                                  width: 80,
+                                                  child: Text(
+                                                    r.mention,
+                                                    textAlign: TextAlign.center,
+                                                    style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
+                                                  ),
+                                                ),
+                                                // Bouton Action Relevé individuel
+                                                SizedBox(
+                                                  width: 90,
+                                                  child: IconButton(
+                                                    icon: const Icon(Icons.print_outlined, size: 18, color: AppColors.primary),
+                                                    tooltip: "Imprimer Relevé A5",
+                                                    onPressed: () => widget.onPreviewSingleStudent(r),
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          );
+                                        },
+                                      ),
+                              ),
+                            ],
                           ),
-                  ),
-                ],
+                        ),
+                      ),
+                    );
+                  },
+                ),
               ),
             ),
           ),

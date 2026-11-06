@@ -167,15 +167,15 @@ class PdfService {
             // Logo Gauche
             if (logoBytes != null)
               pw.Container(
-                width: 38,
-                height: 38,
+                width: 32,
+                height: 32,
                 margin: const pw.EdgeInsets.only(right: 6),
                 child: pw.ClipOval(
                   child: pw.Image(pw.MemoryImage(logoBytes), fit: pw.BoxFit.contain),
                 ),
               )
             else
-              pw.SizedBox(width: 38),
+              pw.SizedBox(width: 32),
 
             // Bloc Central : Ministère & Informations Établissement
             pw.Expanded(
@@ -232,19 +232,19 @@ class PdfService {
             // Logo Droit
             if (logoBytes != null)
               pw.Container(
-                width: 38,
-                height: 38,
+                width: 32,
+                height: 32,
                 margin: const pw.EdgeInsets.only(left: 6),
                 child: pw.ClipOval(
                   child: pw.Image(pw.MemoryImage(logoBytes), fit: pw.BoxFit.contain),
                 ),
               )
             else
-              pw.SizedBox(width: 38),
+              pw.SizedBox(width: 32),
           ],
         ),
 
-        pw.SizedBox(height: 5),
+        pw.SizedBox(height: 4),
 
         // 2. BANNIÈRE TITRE DU RELEVÉ & SÉRIE
         pw.Container(
@@ -380,18 +380,18 @@ class PdfService {
                 decoration: pw.BoxDecoration(color: isAlt ? headerBg : PdfColors.white),
                 children: [
                   pw.Padding(
-                    padding: const pw.EdgeInsets.symmetric(vertical: 2),
+                    padding: const pw.EdgeInsets.symmetric(vertical: 1.6),
                     child: pw.Text("${idx + 1}", textAlign: pw.TextAlign.center, style: const pw.TextStyle(fontSize: 6.5)),
                   ),
                   pw.Padding(
-                    padding: const pw.EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                    padding: const pw.EdgeInsets.symmetric(horizontal: 4, vertical: 1.6),
                     child: pw.Text(
                       sanitizeText(g.subject.name),
                       style: pw.TextStyle(fontSize: 6.8, fontWeight: pw.FontWeight.bold, color: darkColor),
                     ),
                   ),
                   pw.Padding(
-                    padding: const pw.EdgeInsets.symmetric(vertical: 2),
+                    padding: const pw.EdgeInsets.symmetric(vertical: 1.6),
                     child: pw.Text(
                       g.scoreFormatted,
                       textAlign: pw.TextAlign.center,
@@ -403,7 +403,7 @@ class PdfService {
                     ),
                   ),
                   pw.Padding(
-                    padding: const pw.EdgeInsets.symmetric(vertical: 2),
+                    padding: const pw.EdgeInsets.symmetric(vertical: 1.6),
                     child: pw.Text(
                       g.coefficient.toStringAsFixed(0),
                       textAlign: pw.TextAlign.center,
@@ -411,7 +411,7 @@ class PdfService {
                     ),
                   ),
                   pw.Padding(
-                    padding: const pw.EdgeInsets.symmetric(vertical: 2),
+                    padding: const pw.EdgeInsets.symmetric(vertical: 1.6),
                     child: pw.Text(
                       g.pointsFormatted,
                       textAlign: pw.TextAlign.center,
@@ -419,7 +419,7 @@ class PdfService {
                     ),
                   ),
                   pw.Padding(
-                    padding: const pw.EdgeInsets.symmetric(vertical: 2),
+                    padding: const pw.EdgeInsets.symmetric(vertical: 1.6),
                     child: pw.Text(
                       g.rankFormatted,
                       textAlign: pw.TextAlign.center,
@@ -427,7 +427,7 @@ class PdfService {
                     ),
                   ),
                   pw.Padding(
-                    padding: const pw.EdgeInsets.symmetric(horizontal: 2, vertical: 2),
+                    padding: const pw.EdgeInsets.symmetric(horizontal: 2, vertical: 1.6),
                     child: pw.Text(
                       sanitizeText(g.appreciation),
                       textAlign: pw.TextAlign.center,
@@ -435,7 +435,7 @@ class PdfService {
                     ),
                   ),
                   pw.Padding(
-                    padding: const pw.EdgeInsets.symmetric(horizontal: 2, vertical: 2),
+                    padding: const pw.EdgeInsets.symmetric(horizontal: 2, vertical: 1.6),
                     child: pw.Text(
                       sanitizeText(g.subject.teacherName.isNotEmpty ? g.subject.teacherName : "-"),
                       textAlign: pw.TextAlign.left,
@@ -449,20 +449,20 @@ class PdfService {
             pw.TableRow(
               decoration: const pw.BoxDecoration(color: headerBg),
               children: [
-                pw.Padding(padding: const pw.EdgeInsets.all(2), child: pw.Text("")),
+                pw.Padding(padding: const pw.EdgeInsets.all(1.8), child: pw.Text("")),
                 pw.Padding(
-                  padding: const pw.EdgeInsets.symmetric(horizontal: 4, vertical: 2.5),
+                  padding: const pw.EdgeInsets.symmetric(horizontal: 4, vertical: 2),
                   child: pw.Text(
                     "TOTAL GÉNÉRAL",
                     style: pw.TextStyle(fontSize: 7, fontWeight: pw.FontWeight.bold, color: primaryColor),
                   ),
                 ),
                 pw.Padding(
-                  padding: const pw.EdgeInsets.all(2.5),
+                  padding: const pw.EdgeInsets.all(2),
                   child: pw.Text("-", textAlign: pw.TextAlign.center, style: const pw.TextStyle(fontSize: 7)),
                 ),
                 pw.Padding(
-                  padding: const pw.EdgeInsets.all(2.5),
+                  padding: const pw.EdgeInsets.all(2),
                   child: pw.Text(
                     result.totalCoefficientFormatted,
                     textAlign: pw.TextAlign.center,
@@ -470,7 +470,7 @@ class PdfService {
                   ),
                 ),
                 pw.Padding(
-                  padding: const pw.EdgeInsets.all(2.5),
+                  padding: const pw.EdgeInsets.all(2),
                   child: pw.Text(
                     result.totalPointsFormatted,
                     textAlign: pw.TextAlign.center,
@@ -478,11 +478,11 @@ class PdfService {
                   ),
                 ),
                 pw.Padding(
-                  padding: const pw.EdgeInsets.all(2.5),
+                  padding: const pw.EdgeInsets.all(2),
                   child: pw.Text("-", textAlign: pw.TextAlign.center, style: const pw.TextStyle(fontSize: 7)),
                 ),
-                pw.Padding(padding: const pw.EdgeInsets.all(2.5), child: pw.Text("")),
-                pw.Padding(padding: const pw.EdgeInsets.all(2.5), child: pw.Text("")),
+                pw.Padding(padding: const pw.EdgeInsets.all(2), child: pw.Text("")),
+                pw.Padding(padding: const pw.EdgeInsets.all(2), child: pw.Text("")),
               ],
             ),
           ],
@@ -611,7 +611,7 @@ class PdfService {
           ),
         ),
 
-        pw.Spacer(),
+        pw.SizedBox(height: 6),
 
         // 6. SIGNATURES & VALIDATION OFFICIELLE
         pw.Row(
@@ -625,7 +625,7 @@ class PdfService {
                   sanitizeText(settings.juryPresidentTitle),
                   style: pw.TextStyle(fontSize: 7, fontWeight: pw.FontWeight.bold, color: darkColor),
                 ),
-                pw.SizedBox(height: 22),
+                pw.SizedBox(height: 14),
                 pw.Text(
                   "(Visa & Signature)",
                   style: const pw.TextStyle(fontSize: 5.5, fontStyle: pw.FontStyle.italic, color: PdfColors.grey600),
@@ -644,7 +644,7 @@ class PdfService {
                   sanitizeText(settings.directorTitle),
                   style: pw.TextStyle(fontSize: 7, fontWeight: pw.FontWeight.bold, color: darkColor),
                 ),
-                pw.SizedBox(height: 20),
+                pw.SizedBox(height: 13),
                 pw.Text(
                   sanitizeText(settings.directorName),
                   style: pw.TextStyle(fontSize: 6.5, fontWeight: pw.FontWeight.bold),

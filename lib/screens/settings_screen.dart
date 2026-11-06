@@ -296,10 +296,17 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
     ];
 
     final accentPresets = [
+      {'name': 'Blanc Pur', 'hex': '#FFFFFF'},
+      {'name': 'Blanc Ivoire', 'hex': '#F8FAFC'},
       {'name': 'Émeraude', 'hex': '#3BCC97'},
-      {'name': 'Or / Ambre', 'hex': '#D97706'},
+      {'name': 'Vert Menthe', 'hex': '#10B981'},
+      {'name': 'Or / Ambre', 'hex': '#F59E0B'},
+      {'name': 'Jaune Soleil', 'hex': '#FACC15'},
       {'name': 'Cyan Océan', 'hex': '#0284C7'},
+      {'name': 'Bleu Ciel', 'hex': '#38BDF8'},
       {'name': 'Corail', 'hex': '#E11D48'},
+      {'name': 'Rose Fuchsia', 'hex': '#EC4899'},
+      {'name': 'Violet', 'hex': '#A855F7'},
     ];
 
     return SingleChildScrollView(
@@ -421,6 +428,9 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
                         children: accentPresets.map((p) {
                           final isSelected = _selectedAccentHex == p['hex'];
                           final c = AppColors.fromHex(p['hex']!);
+                          final isLight = c.computeLuminance() > 0.65;
+                          final contentColor = isLight ? Colors.black87 : Colors.white;
+
                           return InkWell(
                             onTap: () => setState(() => _selectedAccentHex = p['hex']!),
                             borderRadius: BorderRadius.circular(8),
@@ -429,16 +439,25 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
                               decoration: BoxDecoration(
                                 color: c,
                                 borderRadius: BorderRadius.circular(8),
-                                border: isSelected ? Border.all(color: Colors.black, width: 2) : null,
+                                border: Border.all(
+                                  color: isSelected
+                                      ? Colors.black
+                                      : (isLight ? Colors.grey.shade400 : Colors.transparent),
+                                  width: isSelected ? 2.5 : 1,
+                                ),
                               ),
                               child: Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  if (isSelected) const Icon(Icons.check, size: 14, color: Colors.white),
+                                  if (isSelected) Icon(Icons.check, size: 14, color: contentColor),
                                   if (isSelected) const SizedBox(width: 4),
                                   Text(
                                     p['name']!,
-                                    style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold),
+                                    style: TextStyle(
+                                      color: contentColor,
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.bold,
+                                    ),
                                   ),
                                 ],
                               ),
@@ -753,7 +772,7 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
                 final newYr = AcademicYear(name: name, notes: notesCtrl.text.trim());
                 await DatabaseHelper.instance.addAcademicYear(newYr);
                 if (mounted) {
-                  Navigator.pop(ctx);
+                  if (ctx.mounted) Navigator.pop(ctx);
                   widget.onSettingsUpdated();
                 }
               }
@@ -781,7 +800,7 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
             onPressed: () async {
               await DatabaseHelper.instance.toggleCloseAcademicYear(yr.id!, true);
               if (mounted) {
-                Navigator.pop(ctx);
+                if (ctx.mounted) Navigator.pop(ctx);
                 widget.onSettingsUpdated();
               }
             },
@@ -807,7 +826,7 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
             onPressed: () async {
               await DatabaseHelper.instance.toggleCloseAcademicYear(yr.id!, false);
               if (mounted) {
-                Navigator.pop(ctx);
+                if (ctx.mounted) Navigator.pop(ctx);
                 widget.onSettingsUpdated();
               }
             },
@@ -997,7 +1016,7 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
               );
               await DatabaseHelper.instance.addSubject(newSub);
               if (mounted) {
-                Navigator.pop(ctx);
+                if (ctx.mounted) Navigator.pop(ctx);
                 _loadSubjects();
               }
             },
@@ -1043,7 +1062,7 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
               );
               await DatabaseHelper.instance.updateSubject(updated);
               if (mounted) {
-                Navigator.pop(ctx);
+                if (ctx.mounted) Navigator.pop(ctx);
                 _loadSubjects();
               }
             },
@@ -1085,7 +1104,7 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
           Expanded(
             child: ListView.separated(
               itemCount: widget.exams.length,
-              separatorBuilder: (_, __) => const Divider(height: 1),
+              separatorBuilder: (context, index) => const Divider(height: 1),
               itemBuilder: (context, index) {
                 final ex = widget.exams[index];
                 final isActive = ex.id == widget.activeExam?.id;
@@ -1145,7 +1164,7 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
               );
               await DatabaseHelper.instance.addExam(newEx);
               if (mounted) {
-                Navigator.pop(ctx);
+                if (ctx.mounted) Navigator.pop(ctx);
                 widget.onSettingsUpdated();
               }
             },
@@ -1290,7 +1309,7 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
                   );
                   await DatabaseHelper.instance.addUser(newUser);
                   if (mounted) {
-                    Navigator.pop(ctx);
+                    if (ctx.mounted) Navigator.pop(ctx);
                     _loadUsers();
                   }
                 }
@@ -1321,10 +1340,12 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
               if (passCtrl.text.isNotEmpty && user.id != null) {
                 await DatabaseHelper.instance.updatePassword(user.id!, passCtrl.text);
                 if (mounted) {
-                  Navigator.pop(ctx);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text("Mot de passe mis à jour avec succès !"), backgroundColor: AppColors.success),
-                  );
+                  if (ctx.mounted) Navigator.pop(ctx);
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text("Mot de passe mis à jour avec succès !"), backgroundColor: AppColors.success),
+                    );
+                  }
                   _loadUsers();
                 }
               }
@@ -1349,7 +1370,7 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
               if (user.id != null) {
                 await DatabaseHelper.instance.deleteUser(user.id!);
                 if (mounted) {
-                  Navigator.pop(ctx);
+                  if (ctx.mounted) Navigator.pop(ctx);
                   _loadUsers();
                 }
               }

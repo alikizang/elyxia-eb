@@ -32,6 +32,7 @@ class PrintReportCardScreen extends StatefulWidget {
 class _PrintReportCardScreenState extends State<PrintReportCardScreen> {
   bool _isBatchMode = true; // true = toute la classe, false = élève individuel
   StudentResult? _selectedStudent;
+  double _zoomWidth = 650; // Largeur par défaut permettant un affichage A5 net et lisible
 
   @override
   void initState() {
@@ -54,6 +55,24 @@ class _PrintReportCardScreenState extends State<PrintReportCardScreen> {
     }
   }
 
+  void _zoomIn() {
+    setState(() {
+      if (_zoomWidth < 1300) _zoomWidth += 75;
+    });
+  }
+
+  void _zoomOut() {
+    setState(() {
+      if (_zoomWidth > 425) _zoomWidth -= 75;
+    });
+  }
+
+  void _resetZoom() {
+    setState(() {
+      _zoomWidth = 650;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     if (widget.results.isEmpty) {
@@ -62,12 +81,15 @@ class _PrintReportCardScreenState extends State<PrintReportCardScreen> {
       );
     }
 
+    final primaryColor = AppColors.fromHex(widget.settings.primaryColorHex);
+    final zoomPercent = ((_zoomWidth / 650) * 100).round();
+
     return Padding(
       padding: const EdgeInsets.all(28),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Barre d'options de prévisualisation (Unique vs Ensemble)
+          // Barre d'options et de contrôle
           Container(
             padding: const EdgeInsets.all(18),
             decoration: BoxDecoration(
@@ -78,92 +100,162 @@ class _PrintReportCardScreenState extends State<PrintReportCardScreen> {
                 BoxShadow(color: Colors.black12, blurRadius: 4, offset: Offset(0, 2)),
               ],
             ),
-            child: Row(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        "Impression des Relevés de Notes (Format A5)",
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: AppColors.primary,
-                        ),
+                // Ligne 1 : Titre à gauche + Contrôles de Zoom à droite
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            "Impression des Relevés de Notes (Format A5)",
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: primaryColor,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            "${widget.schoolClass.name} • ${widget.exam.title} • Format standard officiel A5 Portrait (148 × 210 mm)",
+                            style: const TextStyle(color: AppColors.textSecondary, fontSize: 12),
+                          ),
+                        ],
                       ),
-                      const SizedBox(height: 4),
-                      Text(
-                        "${widget.schoolClass.name} • ${widget.exam.title} • Format standard officiel A5 Portrait (148 × 210 mm)",
-                        style: const TextStyle(color: AppColors.textSecondary, fontSize: 12),
-                      ),
-                    ],
-                  ),
-                ),
-
-                // Sélecteur Mode : Ensemble vs Unique
-                SegmentedButton<bool>(
-                  segments: const [
-                    ButtonSegment(
-                      value: true,
-                      icon: Icon(Icons.copy_all_rounded, size: 18),
-                      label: Text("Prévisualisation d'Ensemble (Toute la classe)"),
                     ),
-                    ButtonSegment(
-                      value: false,
-                      icon: Icon(Icons.person_rounded, size: 18),
-                      label: Text("Prévisualisation Unique (Par élève)"),
+                    const SizedBox(width: 16),
+
+                    // Barre de Zoom interactive
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: AppColors.surfaceSubtle,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: AppColors.border),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(Icons.zoom_in, size: 18, color: AppColors.textSecondary),
+                          const SizedBox(width: 4),
+                          IconButton(
+                            icon: const Icon(Icons.remove, size: 16),
+                            tooltip: "Dézoomer",
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+                            onPressed: _zoomWidth > 425 ? _zoomOut : null,
+                          ),
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 6),
+                            child: Text(
+                              "$zoomPercent %",
+                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+                            ),
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.add, size: 16),
+                            tooltip: "Zoomer",
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+                            onPressed: _zoomWidth < 1300 ? _zoomIn : null,
+                          ),
+                          const SizedBox(width: 4),
+                          TextButton(
+                            style: TextButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                              minimumSize: Size.zero,
+                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                            ),
+                            onPressed: _resetZoom,
+                            child: const Text("100%", style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                          ),
+                        ],
+                      ),
                     ),
                   ],
-                  selected: {_isBatchMode},
-                  onSelectionChanged: (val) {
-                    setState(() => _isBatchMode = val.first);
-                  },
                 ),
 
-                // Sélecteur d'élève si mode unique actif
-                if (!_isBatchMode) ...[
-                  const SizedBox(width: 16),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: AppColors.surfaceSubtle,
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: AppColors.border),
-                    ),
-                    child: DropdownButtonHideUnderline(
-                      child: DropdownButton<StudentResult>(
-                        value: _selectedStudent,
-                        icon: const Icon(Icons.arrow_drop_down, color: AppColors.primary),
-                        style: const TextStyle(
-                          color: AppColors.textPrimary,
-                          fontSize: 13,
-                          fontWeight: FontWeight.bold,
+                const SizedBox(height: 14),
+                const Divider(height: 1, color: AppColors.border),
+                const SizedBox(height: 14),
+
+                // Ligne 2 : Sélecteur de Mode (Ensemble vs Unique) + Choix de l'élève
+                Row(
+                  children: [
+                    // Sélecteur Mode
+                    SegmentedButton<bool>(
+                      segments: const [
+                        ButtonSegment(
+                          value: true,
+                          icon: Icon(Icons.copy_all_rounded, size: 16),
+                          label: Text("Toute la classe (Lot)"),
                         ),
-                        items: widget.results.map((r) {
-                          return DropdownMenuItem<StudentResult>(
-                            value: r,
-                            child: Text(
-                              "[N° ${r.student.tableNumber}] ${r.student.fullName} (${r.averageFormatted}/20)",
-                            ),
-                          );
-                        }).toList(),
-                        onChanged: (newR) {
-                          if (newR != null) {
-                            setState(() => _selectedStudent = newR);
-                          }
-                        },
-                      ),
+                        ButtonSegment(
+                          value: false,
+                          icon: Icon(Icons.person_rounded, size: 16),
+                          label: Text("Par élève (Individuel)"),
+                        ),
+                      ],
+                      selected: {_isBatchMode},
+                      onSelectionChanged: (val) {
+                        setState(() => _isBatchMode = val.first);
+                      },
                     ),
-                  ),
-                ],
+
+                    if (!_isBatchMode) ...[
+                      const SizedBox(width: 16),
+                      // Dropdown avec largeur élastique mais protégée
+                      Expanded(
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: AppColors.surfaceSubtle,
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: AppColors.border),
+                          ),
+                          child: DropdownButtonHideUnderline(
+                            child: DropdownButton<StudentResult>(
+                              isExpanded: true,
+                              value: _selectedStudent,
+                              icon: Icon(Icons.arrow_drop_down, color: primaryColor),
+                              items: widget.results.map((r) {
+                                return DropdownMenuItem<StudentResult>(
+                                  value: r,
+                                  child: Text(
+                                    "[N° ${r.student.tableNumber}] ${r.student.fullName} (Moy: ${r.averageFormatted}/20 — Rang: ${r.rankFormatted})",
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(
+                                      color: AppColors.textPrimary,
+                                      fontSize: 12.5,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                );
+                              }).toList(),
+                              onChanged: (newR) {
+                                if (newR != null) {
+                                  setState(() => _selectedStudent = newR);
+                                }
+                              },
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
               ],
             ),
           ),
 
           const SizedBox(height: 16),
 
-          // Zone de Prévisualisation interactive PDF (A5)
+          // Zone de Prévisualisation interactive PDF (A5) avec support de Zoom
           Expanded(
             child: Container(
               decoration: BoxDecoration(
@@ -177,7 +269,7 @@ class _PrintReportCardScreenState extends State<PrintReportCardScreen> {
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(12),
                 child: PdfPreview(
-                  maxPageWidth: 460,
+                  maxPageWidth: _zoomWidth,
                   initialPageFormat: PdfPageFormat.a5,
                   canChangePageFormat: false,
                   canChangeOrientation: false,
