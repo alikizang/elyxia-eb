@@ -46,6 +46,10 @@ class _ResultsScreenState extends State<ResultsScreen> {
   @override
   Widget build(BuildContext context) {
     final stats = CalculationService.computeStatistics(widget.results);
+    final primaryColor = AppColors.fromHex(widget.settings?.primaryColorHex);
+    final accentColor = AppColors.fromHex(widget.settings?.accentColorHex);
+    final isAccentLight = accentColor.computeLuminance() > 0.65;
+    final accentTextColor = isAccentLight ? Colors.black87 : Colors.white;
 
     // Filtrage
     final filtered = widget.results.where((r) {
@@ -83,10 +87,10 @@ class _ResultsScreenState extends State<ResultsScreen> {
                     children: [
                       Text(
                         "Résultats & Classement — ${widget.schoolClass.name} (${widget.schoolClass.examType})",
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.bold,
-                          color: AppColors.primary,
+                          color: primaryColor,
                         ),
                       ),
                       const SizedBox(height: 4),
@@ -103,8 +107,8 @@ class _ResultsScreenState extends State<ResultsScreen> {
                   icon: const Icon(Icons.file_download_outlined, size: 18),
                   label: const Text("Exporter CSV"),
                   style: OutlinedButton.styleFrom(
-                    foregroundColor: AppColors.primary,
-                    side: const BorderSide(color: AppColors.primary),
+                    foregroundColor: primaryColor,
+                    side: BorderSide(color: primaryColor),
                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                   ),
@@ -130,8 +134,8 @@ class _ResultsScreenState extends State<ResultsScreen> {
                   icon: const Icon(Icons.print_rounded, size: 18),
                   label: const Text("Imprimer Tous les Relevés A5"),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.accent,
-                    foregroundColor: AppColors.primaryDark,
+                    backgroundColor: accentColor,
+                    foregroundColor: accentTextColor,
                     padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
                     textStyle: const TextStyle(fontWeight: FontWeight.bold),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
@@ -231,8 +235,8 @@ class _ResultsScreenState extends State<ResultsScreen> {
                               // En-tête du tableau
                               Container(
                                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                                decoration: const BoxDecoration(
-                                  color: AppColors.primary,
+                                decoration: BoxDecoration(
+                                  color: primaryColor,
                                 ),
                                 child: Row(
                                   children: [
@@ -286,7 +290,7 @@ class _ResultsScreenState extends State<ResultsScreen> {
                                                     style: TextStyle(
                                                       fontWeight: FontWeight.bold,
                                                       fontSize: 12,
-                                                      color: r.rank <= 3 ? AppColors.primary : AppColors.textPrimary,
+                                                      color: r.rank <= 3 ? primaryColor : AppColors.textPrimary,
                                                     ),
                                                   ),
                                                 ),
@@ -335,7 +339,7 @@ class _ResultsScreenState extends State<ResultsScreen> {
                                                   child: Text(
                                                     r.totalPointsFormatted,
                                                     textAlign: TextAlign.center,
-                                                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: AppColors.primary),
+                                                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: primaryColor),
                                                   ),
                                                 ),
                                                 // Moyenne /20
@@ -384,7 +388,7 @@ class _ResultsScreenState extends State<ResultsScreen> {
                                                 SizedBox(
                                                   width: 90,
                                                   child: IconButton(
-                                                    icon: const Icon(Icons.print_outlined, size: 18, color: AppColors.primary),
+                                                    icon: Icon(Icons.print_outlined, size: 18, color: primaryColor),
                                                     tooltip: "Imprimer Relevé A5",
                                                     onPressed: () => widget.onPreviewSingleStudent(r),
                                                   ),

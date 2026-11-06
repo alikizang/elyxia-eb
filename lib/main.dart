@@ -56,7 +56,8 @@ class _ElyxiaEbAppState extends State<ElyxiaEbApp> {
     }
   }
 
-  void _onLoginSuccess(AppUser user, AcademicYear year) {
+  void _onLoginSuccess(AppUser user) async {
+    final year = await DatabaseHelper.instance.getActiveAcademicYear();
     setState(() {
       _currentUser = user;
       _activeYear = year;

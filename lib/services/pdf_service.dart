@@ -91,7 +91,7 @@ class PdfService {
     pdf.addPage(
       pw.Page(
         pageFormat: PdfPageFormat.a5,
-        margin: const pw.EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        margin: const pw.EdgeInsets.symmetric(horizontal: 10, vertical: 8),
         build: (context) => _buildReportCardContent(
           context: context,
           settings: settings,
@@ -124,7 +124,7 @@ class PdfService {
       pdf.addPage(
         pw.Page(
           pageFormat: PdfPageFormat.a5,
-          margin: const pw.EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          margin: const pw.EdgeInsets.symmetric(horizontal: 10, vertical: 8),
           build: (context) => _buildReportCardContent(
             context: context,
             settings: settings,
@@ -139,7 +139,7 @@ class PdfService {
     return pdf.save();
   }
 
-  /// Contenu d'un Relevé de Notes A5 inspiré directement du bulletin officiel de l'école
+  /// Contenu d'un Relevé de Notes A5 officiel, prestigieux et authentique
   static pw.Widget _buildReportCardContent({
     required pw.Context context,
     required AppSettings settings,
@@ -157,510 +157,634 @@ class PdfService {
     const successColor = PdfColor.fromInt(0xFF15803D);
     const errorColor = PdfColor.fromInt(0xFFB91C1C);
 
-    return pw.Column(
-      crossAxisAlignment: pw.CrossAxisAlignment.stretch,
+    return pw.Stack(
       children: [
-        // 1. EN-TÊTE OFFICIEL DE L'ÉTABLISSEMENT (Avec Logos)
-        pw.Row(
-          crossAxisAlignment: pw.CrossAxisAlignment.center,
-          children: [
-            // Logo Gauche
-            if (logoBytes != null)
-              pw.Container(
-                width: 32,
-                height: 32,
-                margin: const pw.EdgeInsets.only(right: 6),
-                child: pw.ClipOval(
-                  child: pw.Image(pw.MemoryImage(logoBytes), fit: pw.BoxFit.contain),
+        // 1. FILIGRANE CENTRAL DE L'ÉTABLISSEMENT (Subtil, chic et authentique)
+        if (logoBytes != null)
+          pw.Positioned.fill(
+            child: pw.Center(
+              child: pw.Opacity(
+                opacity: 0.045,
+                child: pw.Image(
+                  pw.MemoryImage(logoBytes),
+                  width: 220,
+                  height: 220,
+                  fit: pw.BoxFit.contain,
                 ),
-              )
-            else
-              pw.SizedBox(width: 32),
+              ),
+            ),
+          ),
 
-            // Bloc Central : Ministère & Informations Établissement
-            pw.Expanded(
-              child: pw.Column(
-                crossAxisAlignment: pw.CrossAxisAlignment.center,
-                children: [
-                  pw.Row(
+        // 2. CADRE DE SÉCURITÉ OFFICIEL (Double filet institutionnel de diplôme)
+        pw.Container(
+          decoration: pw.BoxDecoration(
+            border: pw.Border.all(color: primaryColor, width: 1.0),
+            borderRadius: const pw.BorderRadius.all(pw.Radius.circular(3)),
+          ),
+          padding: const pw.EdgeInsets.all(2.0),
+          child: pw.Container(
+            decoration: pw.BoxDecoration(
+              border: pw.Border.all(color: borderColor, width: 0.45),
+              borderRadius: const pw.BorderRadius.all(pw.Radius.circular(2)),
+            ),
+            padding: const pw.EdgeInsets.symmetric(horizontal: 7, vertical: 6),
+            child: pw.Column(
+              crossAxisAlignment: pw.CrossAxisAlignment.stretch,
+              children: [
+                // A. EN-TÊTE OFFICIEL DE L'ÉTABLISSEMENT
+                pw.Row(
+                  crossAxisAlignment: pw.CrossAxisAlignment.center,
+                  children: [
+                    // Logo Gauche
+                    if (logoBytes != null)
+                      pw.Container(
+                        width: 34,
+                        height: 34,
+                        margin: const pw.EdgeInsets.only(right: 6),
+                        child: pw.ClipOval(
+                          child: pw.Image(pw.MemoryImage(logoBytes), fit: pw.BoxFit.contain),
+                        ),
+                      )
+                    else
+                      pw.SizedBox(width: 34),
+
+                    // Bloc Central : Ministère & Informations Établissement
+                    pw.Expanded(
+                      child: pw.Column(
+                        crossAxisAlignment: pw.CrossAxisAlignment.center,
+                        children: [
+                          pw.Row(
+                            mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                            children: [
+                              pw.Text(
+                                "MINISTÈRE DE L'EDUCATION NATIONALE",
+                                style: pw.TextStyle(fontSize: 6.2, fontWeight: pw.FontWeight.bold, color: darkColor),
+                              ),
+                              pw.Column(
+                                crossAxisAlignment: pw.CrossAxisAlignment.end,
+                                children: [
+                                  pw.Text(
+                                    "RÉPUBLIQUE TOGOLAISE",
+                                    style: pw.TextStyle(fontSize: 6.2, fontWeight: pw.FontWeight.bold, color: darkColor),
+                                  ),
+                                  pw.Text(
+                                    "Travail - Liberté - Patrie",
+                                    style: const pw.TextStyle(fontSize: 4.8, fontStyle: pw.FontStyle.italic),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                          pw.SizedBox(height: 1.5),
+                          pw.Text(
+                            sanitizeText(settings.schoolName),
+                            textAlign: pw.TextAlign.center,
+                            style: pw.TextStyle(fontSize: 9.2, fontWeight: pw.FontWeight.bold, color: primaryColor),
+                          ),
+                          pw.Text(
+                            sanitizeText(settings.schoolSlogan),
+                            textAlign: pw.TextAlign.center,
+                            style: pw.TextStyle(fontSize: 5.8, fontStyle: pw.FontStyle.italic, color: darkColor),
+                          ),
+                          pw.Text(
+                            sanitizeText(settings.schoolAddress),
+                            textAlign: pw.TextAlign.center,
+                            style: const pw.TextStyle(fontSize: 5.6, color: PdfColors.grey800),
+                          ),
+                          pw.Text(
+                            sanitizeText("${settings.schoolPoBox} • Tél : ${settings.schoolPhone}"),
+                            textAlign: pw.TextAlign.center,
+                            style: const pw.TextStyle(fontSize: 5.4, color: PdfColors.grey700),
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    // Logo Droit
+                    if (logoBytes != null)
+                      pw.Container(
+                        width: 34,
+                        height: 34,
+                        margin: const pw.EdgeInsets.only(left: 6),
+                        child: pw.ClipOval(
+                          child: pw.Image(pw.MemoryImage(logoBytes), fit: pw.BoxFit.contain),
+                        ),
+                      )
+                    else
+                      pw.SizedBox(width: 34),
+                  ],
+                ),
+
+                pw.SizedBox(height: 4),
+
+                // B. BANNIÈRE TITRE DU RELEVÉ & SÉRIE
+                pw.Container(
+                  padding: const pw.EdgeInsets.symmetric(vertical: 3.2, horizontal: 8),
+                  decoration: pw.BoxDecoration(
+                    color: primaryColor,
+                    borderRadius: const pw.BorderRadius.all(pw.Radius.circular(2.5)),
+                  ),
+                  child: pw.Row(
                     mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                     children: [
                       pw.Text(
-                        "MINISTÈRE DE L'EDUCATION NATIONALE",
+                        sanitizeText("RELEVÉ DE NOTES OFFICIEL - ${exam.title.toUpperCase()}"),
+                        style: pw.TextStyle(
+                          color: PdfColors.white,
+                          fontWeight: pw.FontWeight.bold,
+                          fontSize: 8.2,
+                          letterSpacing: 0.5,
+                        ),
+                      ),
+                      pw.Text(
+                        sanitizeText("SÉRIE ${result.schoolClass.series.toUpperCase()} (${result.schoolClass.examType})"),
+                        style: pw.TextStyle(
+                          color: accentColor,
+                          fontWeight: pw.FontWeight.bold,
+                          fontSize: 8.2,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+                // Ligne Métadonnées Session & Promotion
+                pw.Container(
+                  padding: const pw.EdgeInsets.symmetric(vertical: 2, horizontal: 4),
+                  decoration: const pw.BoxDecoration(color: headerBg),
+                  child: pw.Row(
+                    mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                    children: [
+                      pw.Text(
+                        "Année Scolaire : ${exam.academicYear}",
                         style: pw.TextStyle(fontSize: 6.5, fontWeight: pw.FontWeight.bold, color: darkColor),
                       ),
-                      pw.Column(
-                        crossAxisAlignment: pw.CrossAxisAlignment.end,
+                      pw.Text(
+                        "Classe : ${result.schoolClass.name}",
+                        style: pw.TextStyle(fontSize: 6.5, fontWeight: pw.FontWeight.bold, color: darkColor),
+                      ),
+                      pw.Text(
+                        "Session : ${exam.sessionDate}",
+                        style: pw.TextStyle(fontSize: 6.5, fontWeight: pw.FontWeight.bold, color: darkColor),
+                      ),
+                      pw.Text(
+                        "Effectif : ${result.totalCandidates} candidats",
+                        style: pw.TextStyle(fontSize: 6.5, fontWeight: pw.FontWeight.bold, color: darkColor),
+                      ),
+                    ],
+                  ),
+                ),
+
+                pw.SizedBox(height: 3.5),
+
+                // C. CARTOUCHE D'IDENTITÉ STRUCTURÉ DU CANDIDAT
+                pw.Container(
+                  padding: const pw.EdgeInsets.symmetric(horizontal: 6, vertical: 3.5),
+                  decoration: pw.BoxDecoration(
+                    color: lightBg,
+                    border: pw.Border.all(color: borderColor, width: 0.5),
+                    borderRadius: const pw.BorderRadius.all(pw.Radius.circular(2.5)),
+                  ),
+                  child: pw.Column(
+                    crossAxisAlignment: pw.CrossAxisAlignment.start,
+                    children: [
+                      pw.Row(
+                        crossAxisAlignment: pw.CrossAxisAlignment.center,
+                        children: [
+                          pw.Expanded(
+                            flex: 6,
+                            child: pw.RichText(
+                              text: pw.TextSpan(
+                                style: const pw.TextStyle(fontSize: 7.2, color: darkColor),
+                                children: [
+                                  const pw.TextSpan(text: "NOM ET PRÉNOMS : ", style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
+                                  pw.TextSpan(
+                                    text: sanitizeText(result.student.fullName),
+                                    style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 8.0, color: primaryColor),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                          pw.Container(
+                            padding: const pw.EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
+                            decoration: pw.BoxDecoration(
+                              color: headerBg,
+                              border: pw.Border.all(color: primaryColor, width: 0.5),
+                              borderRadius: const pw.BorderRadius.all(pw.Radius.circular(2)),
+                            ),
+                            child: pw.Text(
+                              "N° TABLE : ${result.student.tableNumber.isNotEmpty ? result.student.tableNumber : '-'}",
+                              style: pw.TextStyle(fontSize: 7, fontWeight: pw.FontWeight.bold, color: primaryColor),
+                            ),
+                          ),
+                          pw.SizedBox(width: 8),
+                          pw.Text(
+                            "N° Mtle : ${result.student.matricule.isNotEmpty ? result.student.matricule : '-'}",
+                            style: const pw.TextStyle(fontSize: 6.8, color: darkColor),
+                          ),
+                        ],
+                      ),
+                      pw.SizedBox(height: 1.5),
+                      pw.Row(
+                        mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                         children: [
                           pw.Text(
-                            "RÉPUBLIQUE TOGOLAISE",
-                            style: pw.TextStyle(fontSize: 6.5, fontWeight: pw.FontWeight.bold, color: darkColor),
+                            "Date et Lieu de Naissance : ${result.student.birthDate.isNotEmpty ? result.student.birthDate : '-'} à ${result.student.birthPlace.isNotEmpty ? result.student.birthPlace : '-'}",
+                            style: const pw.TextStyle(fontSize: 6.2, color: PdfColors.grey800),
                           ),
                           pw.Text(
-                            "Travail - Liberté - Patrie",
-                            style: const pw.TextStyle(fontSize: 5, fontStyle: pw.FontStyle.italic),
+                            "Sexe : ${result.student.gender == 'M' ? 'Masculin' : 'Féminin'}    |    Doublant : ${result.student.isRepeater ? 'OUI' : 'NON'}",
+                            style: pw.TextStyle(fontSize: 6.4, fontWeight: pw.FontWeight.bold, color: darkColor),
                           ),
                         ],
                       ),
                     ],
                   ),
-                  pw.SizedBox(height: 2),
-                  pw.Text(
-                    sanitizeText(settings.schoolName),
-                    textAlign: pw.TextAlign.center,
-                    style: pw.TextStyle(fontSize: 9.5, fontWeight: pw.FontWeight.bold, color: primaryColor),
-                  ),
-                  pw.Text(
-                    sanitizeText(settings.schoolSlogan),
-                    textAlign: pw.TextAlign.center,
-                    style: pw.TextStyle(fontSize: 6, fontStyle: pw.FontStyle.italic, color: darkColor),
-                  ),
-                  pw.Text(
-                    sanitizeText(settings.schoolAddress),
-                    textAlign: pw.TextAlign.center,
-                    style: const pw.TextStyle(fontSize: 6, color: PdfColors.grey800),
-                  ),
-                  pw.Text(
-                    sanitizeText("${settings.schoolPoBox} / Tél : ${settings.schoolPhone}"),
-                    textAlign: pw.TextAlign.center,
-                    style: const pw.TextStyle(fontSize: 5.5, color: PdfColors.grey700),
-                  ),
-                ],
-              ),
-            ),
-
-            // Logo Droit
-            if (logoBytes != null)
-              pw.Container(
-                width: 32,
-                height: 32,
-                margin: const pw.EdgeInsets.only(left: 6),
-                child: pw.ClipOval(
-                  child: pw.Image(pw.MemoryImage(logoBytes), fit: pw.BoxFit.contain),
                 ),
-              )
-            else
-              pw.SizedBox(width: 32),
-          ],
-        ),
 
-        pw.SizedBox(height: 4),
+                pw.SizedBox(height: 4),
 
-        // 2. BANNIÈRE TITRE DU RELEVÉ & SÉRIE
-        pw.Container(
-          padding: const pw.EdgeInsets.symmetric(vertical: 3.5, horizontal: 8),
-          decoration: pw.BoxDecoration(
-            color: primaryColor,
-            borderRadius: const pw.BorderRadius.all(pw.Radius.circular(3)),
-          ),
-          child: pw.Row(
-            mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-            children: [
-              pw.Text(
-                sanitizeText("RELEVÉ DE NOTES - ${exam.title.toUpperCase()}"),
-                style: pw.TextStyle(
-                  color: PdfColors.white,
-                  fontWeight: pw.FontWeight.bold,
-                  fontSize: 8.5,
-                  letterSpacing: 0.5,
+                // D. TABLEAU OFFICIEL DES NOTES
+                pw.Table(
+                  border: pw.TableBorder.all(color: borderColor, width: 0.5),
+                  columnWidths: const {
+                    0: pw.FlexColumnWidth(0.8), // N°
+                    1: pw.FlexColumnWidth(4.6), // Matières
+                    2: pw.FlexColumnWidth(1.8), // Note /20
+                    3: pw.FlexColumnWidth(1.2), // Coef
+                    4: pw.FlexColumnWidth(1.8), // Produit (Points)
+                    5: pw.FlexColumnWidth(1.5), // Rang
+                    6: pw.FlexColumnWidth(2.5), // Appréciation
+                    7: pw.FlexColumnWidth(3.0), // Nom des Professeurs
+                  },
+                  children: [
+                    // Ligne d'en-tête du tableau
+                    pw.TableRow(
+                      decoration: pw.BoxDecoration(color: primaryColor),
+                      children: [
+                        _buildTableHeader("N°"),
+                        _buildTableHeader("Matières", align: pw.TextAlign.left),
+                        _buildTableHeader("Note /20"),
+                        _buildTableHeader("Coef."),
+                        _buildTableHeader("Produit"),
+                        _buildTableHeader("Rang"),
+                        _buildTableHeader("Appréciation"),
+                        _buildTableHeader("Nom des Professeurs"),
+                      ],
+                    ),
+                    // Lignes des matières
+                    ...result.grades.asMap().entries.map((entry) {
+                      final idx = entry.key;
+                      final g = entry.value;
+                      final isAlt = idx % 2 == 1;
+
+                      return pw.TableRow(
+                        decoration: pw.BoxDecoration(color: isAlt ? headerBg : PdfColors.white),
+                        children: [
+                          pw.Padding(
+                            padding: const pw.EdgeInsets.symmetric(vertical: 2.3),
+                            child: pw.Text("${idx + 1}", textAlign: pw.TextAlign.center, style: const pw.TextStyle(fontSize: 6.5)),
+                          ),
+                          pw.Padding(
+                            padding: const pw.EdgeInsets.symmetric(horizontal: 4, vertical: 2.3),
+                            child: pw.Text(
+                              sanitizeText(g.subject.name),
+                              style: pw.TextStyle(fontSize: 6.8, fontWeight: pw.FontWeight.bold, color: darkColor),
+                            ),
+                          ),
+                          pw.Padding(
+                            padding: const pw.EdgeInsets.symmetric(vertical: 2.3),
+                            child: pw.Text(
+                              g.scoreFormatted,
+                              textAlign: pw.TextAlign.center,
+                              style: pw.TextStyle(
+                                fontSize: 6.8,
+                                fontWeight: pw.FontWeight.bold,
+                                color: g.isAbsent ? errorColor : ((g.score ?? 0) < 10 ? errorColor : darkColor),
+                              ),
+                            ),
+                          ),
+                          pw.Padding(
+                            padding: const pw.EdgeInsets.symmetric(vertical: 2.3),
+                            child: pw.Text(
+                              g.coefficient.toStringAsFixed(0),
+                              textAlign: pw.TextAlign.center,
+                              style: const pw.TextStyle(fontSize: 6.8),
+                            ),
+                          ),
+                          pw.Padding(
+                            padding: const pw.EdgeInsets.symmetric(vertical: 2.3),
+                            child: pw.Text(
+                              g.pointsFormatted,
+                              textAlign: pw.TextAlign.center,
+                              style: pw.TextStyle(fontSize: 6.8, fontWeight: pw.FontWeight.bold),
+                            ),
+                          ),
+                          pw.Padding(
+                            padding: const pw.EdgeInsets.symmetric(vertical: 2.3),
+                            child: pw.Text(
+                              g.rankFormatted,
+                              textAlign: pw.TextAlign.center,
+                              style: const pw.TextStyle(fontSize: 6.5),
+                            ),
+                          ),
+                          pw.Padding(
+                            padding: const pw.EdgeInsets.symmetric(horizontal: 2, vertical: 2.3),
+                            child: pw.Text(
+                              sanitizeText(g.appreciation),
+                              textAlign: pw.TextAlign.center,
+                              style: pw.TextStyle(fontSize: 6.5, color: g.isAbsent ? errorColor : darkColor),
+                            ),
+                          ),
+                          pw.Padding(
+                            padding: const pw.EdgeInsets.symmetric(horizontal: 2, vertical: 2.3),
+                            child: pw.Text(
+                              sanitizeText(g.subject.teacherName.isNotEmpty ? g.subject.teacherName : "-"),
+                              textAlign: pw.TextAlign.left,
+                              style: const pw.TextStyle(fontSize: 6),
+                            ),
+                          ),
+                        ],
+                      );
+                    }),
+                    // Ligne TOTAL DU RELEVÉ
+                    pw.TableRow(
+                      decoration: const pw.BoxDecoration(color: headerBg),
+                      children: [
+                        pw.Padding(padding: const pw.EdgeInsets.all(2), child: pw.Text("")),
+                        pw.Padding(
+                          padding: const pw.EdgeInsets.symmetric(horizontal: 4, vertical: 2.3),
+                          child: pw.Text(
+                            "TOTAL GÉNÉRAL",
+                            style: pw.TextStyle(fontSize: 7, fontWeight: pw.FontWeight.bold, color: primaryColor),
+                          ),
+                        ),
+                        pw.Padding(
+                          padding: const pw.EdgeInsets.all(2.3),
+                          child: pw.Text("-", textAlign: pw.TextAlign.center, style: const pw.TextStyle(fontSize: 7)),
+                        ),
+                        pw.Padding(
+                          padding: const pw.EdgeInsets.all(2.3),
+                          child: pw.Text(
+                            result.totalCoefficientFormatted,
+                            textAlign: pw.TextAlign.center,
+                            style: pw.TextStyle(fontSize: 7, fontWeight: pw.FontWeight.bold, color: primaryColor),
+                          ),
+                        ),
+                        pw.Padding(
+                          padding: const pw.EdgeInsets.all(2.3),
+                          child: pw.Text(
+                            result.totalPointsFormatted,
+                            textAlign: pw.TextAlign.center,
+                            style: pw.TextStyle(fontSize: 7, fontWeight: pw.FontWeight.bold, color: primaryColor),
+                          ),
+                        ),
+                        pw.Padding(
+                          padding: const pw.EdgeInsets.all(2.3),
+                          child: pw.Text("-", textAlign: pw.TextAlign.center, style: const pw.TextStyle(fontSize: 7)),
+                        ),
+                        pw.Padding(padding: const pw.EdgeInsets.all(2.3), child: pw.Text("")),
+                        pw.Padding(padding: const pw.EdgeInsets.all(2.3), child: pw.Text("")),
+                      ],
+                    ),
+                  ],
                 ),
-              ),
-              pw.Text(
-                sanitizeText("SÉRIE ${result.schoolClass.series.toUpperCase()}"),
-                style: pw.TextStyle(
-                  color: accentColor,
-                  fontWeight: pw.FontWeight.bold,
-                  fontSize: 8.5,
-                ),
-              ),
-            ],
-          ),
-        ),
 
-        // Ligne Année Scolaire & Classe
-        pw.Container(
-          padding: const pw.EdgeInsets.symmetric(vertical: 2, horizontal: 4),
-          child: pw.Row(
-            mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-            children: [
-              pw.Text(
-                "Année Scolaire : ${exam.academicYear}",
-                style: pw.TextStyle(fontSize: 6.8, fontWeight: pw.FontWeight.bold, color: darkColor),
-              ),
-              pw.Text(
-                "Classe : ${result.schoolClass.name} (${result.schoolClass.examType})",
-                style: pw.TextStyle(fontSize: 6.8, fontWeight: pw.FontWeight.bold, color: darkColor),
-              ),
-              pw.Text(
-                "Effectif : ${result.totalCandidates}",
-                style: pw.TextStyle(fontSize: 6.8, fontWeight: pw.FontWeight.bold, color: darkColor),
-              ),
-            ],
-          ),
-        ),
+                pw.SizedBox(height: 3),
 
-        // 3. CARTOUCHE D'IDENTITÉ DE L'ÉLÈVE
-        pw.Container(
-          padding: const pw.EdgeInsets.symmetric(horizontal: 6, vertical: 4),
-          decoration: pw.BoxDecoration(
-            color: headerBg,
-            border: pw.Border.all(color: borderColor, width: 0.6),
-            borderRadius: const pw.BorderRadius.all(pw.Radius.circular(3)),
-          ),
-          child: pw.Row(
-            crossAxisAlignment: pw.CrossAxisAlignment.center,
-            children: [
-              pw.Expanded(
-                flex: 7,
-                child: pw.RichText(
-                  text: pw.TextSpan(
-                    style: const pw.TextStyle(fontSize: 7.5, color: darkColor),
+                // E. GRILLE OFFICIELLE DU BARÈME DES MENTIONS
+                pw.Container(
+                  padding: const pw.EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: pw.BoxDecoration(
+                    color: PdfColors.grey100,
+                    borderRadius: const pw.BorderRadius.all(pw.Radius.circular(2)),
+                    border: pw.Border.all(color: PdfColors.grey300, width: 0.35),
+                  ),
+                  child: pw.Row(
+                    mainAxisAlignment: pw.MainAxisAlignment.center,
                     children: [
-                      const pw.TextSpan(text: "NOM ET PRÉNOMS : ", style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
-                      pw.TextSpan(
-                        text: sanitizeText(result.student.fullName),
-                        style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 8, color: primaryColor),
+                      pw.Text(
+                        "GRILLE OFFICIELLE DES MENTIONS :   [ 16 - 20 : Très Bien ]   •   [ 14 - 15.99 : Bien ]   •   [ 12 - 13.99 : Assez Bien ]   •   [ 10 - 11.99 : Passable ]   •   [ < 10 : Ajourné ]",
+                        style: const pw.TextStyle(fontSize: 5.3, color: PdfColors.grey800),
                       ),
                     ],
                   ),
                 ),
-              ),
-              pw.Expanded(
-                flex: 3,
-                child: pw.Text(
-                  "N° Mtle : ${result.student.matricule.isNotEmpty ? result.student.matricule : '-'}",
-                  style: const pw.TextStyle(fontSize: 7, color: darkColor),
-                ),
-              ),
-              pw.Text(
-                "Sexe : ${result.student.gender}    Doublant : ${result.student.isRepeater ? 'OUI' : 'NON'}    N° Table : ${result.student.tableNumber.isNotEmpty ? result.student.tableNumber : '-'}",
-                style: pw.TextStyle(fontSize: 7, fontWeight: pw.FontWeight.bold, color: darkColor),
-              ),
-            ],
-          ),
-        ),
 
-        pw.SizedBox(height: 4),
+                pw.SizedBox(height: 4),
 
-        // 4. TABLEAU DES NOTES (Structure officielle inspirée de test.pdf)
-        pw.Table(
-          border: pw.TableBorder.all(color: borderColor, width: 0.5),
-          columnWidths: const {
-            0: pw.FlexColumnWidth(0.8), // N°
-            1: pw.FlexColumnWidth(4.5), // Matières
-            2: pw.FlexColumnWidth(1.8), // Note /20
-            3: pw.FlexColumnWidth(1.3), // Coef
-            4: pw.FlexColumnWidth(1.9), // Produit (Points)
-            5: pw.FlexColumnWidth(1.6), // Rang
-            6: pw.FlexColumnWidth(2.5), // Appréciation
-            7: pw.FlexColumnWidth(3.0), // Nom des Professeurs
-          },
-          children: [
-            // Ligne d'en-tête du tableau
-            pw.TableRow(
-              decoration: pw.BoxDecoration(color: primaryColor),
-              children: [
-                _buildTableHeader("N°"),
-                _buildTableHeader("Matières", align: pw.TextAlign.left),
-                _buildTableHeader("Note /20"),
-                _buildTableHeader("Coef."),
-                _buildTableHeader("Produit"),
-                _buildTableHeader("Rang"),
-                _buildTableHeader("Appréciation"),
-                _buildTableHeader("Nom des Professeurs"),
-              ],
-            ),
-            // Lignes des matières
-            ...result.grades.asMap().entries.map((entry) {
-              final idx = entry.key;
-              final g = entry.value;
-              final isAlt = idx % 2 == 1;
-
-              return pw.TableRow(
-                decoration: pw.BoxDecoration(color: isAlt ? headerBg : PdfColors.white),
-                children: [
-                  pw.Padding(
-                    padding: const pw.EdgeInsets.symmetric(vertical: 1.6),
-                    child: pw.Text("${idx + 1}", textAlign: pw.TextAlign.center, style: const pw.TextStyle(fontSize: 6.5)),
+                // F. BILAN DE DÉLIBÉRATION OFFICIEL & CLASSEMENT
+                pw.Container(
+                  padding: const pw.EdgeInsets.all(4.5),
+                  decoration: pw.BoxDecoration(
+                    border: pw.Border.all(color: primaryColor, width: 0.8),
+                    borderRadius: const pw.BorderRadius.all(pw.Radius.circular(3)),
+                    color: lightBg,
                   ),
-                  pw.Padding(
-                    padding: const pw.EdgeInsets.symmetric(horizontal: 4, vertical: 1.6),
-                    child: pw.Text(
-                      sanitizeText(g.subject.name),
-                      style: pw.TextStyle(fontSize: 6.8, fontWeight: pw.FontWeight.bold, color: darkColor),
-                    ),
-                  ),
-                  pw.Padding(
-                    padding: const pw.EdgeInsets.symmetric(vertical: 1.6),
-                    child: pw.Text(
-                      g.scoreFormatted,
-                      textAlign: pw.TextAlign.center,
-                      style: pw.TextStyle(
-                        fontSize: 6.8,
-                        fontWeight: pw.FontWeight.bold,
-                        color: g.isAbsent ? errorColor : ((g.score ?? 0) < 10 ? errorColor : darkColor),
+                  child: pw.Row(
+                    crossAxisAlignment: pw.CrossAxisAlignment.start,
+                    children: [
+                      // Bloc 1 : Moyenne Générale & En Lettres
+                      pw.Expanded(
+                        flex: 4,
+                        child: pw.Column(
+                          crossAxisAlignment: pw.CrossAxisAlignment.start,
+                          children: [
+                            pw.Text(
+                              "MOYENNE GÉNÉRALE",
+                              style: pw.TextStyle(fontSize: 6.5, fontWeight: pw.FontWeight.bold, color: darkColor),
+                            ),
+                            pw.SizedBox(height: 1),
+                            pw.Row(
+                              crossAxisAlignment: pw.CrossAxisAlignment.end,
+                              children: [
+                                pw.Text(
+                                  result.averageFormatted,
+                                  style: pw.TextStyle(
+                                    fontSize: 14.5,
+                                    fontWeight: pw.FontWeight.bold,
+                                    color: result.isAdmitted ? primaryColor : errorColor,
+                                  ),
+                                ),
+                                pw.Padding(
+                                  padding: const pw.EdgeInsets.only(bottom: 1.5, left: 2),
+                                  child: pw.Text("/ 20", style: const pw.TextStyle(fontSize: 7.5, color: PdfColors.grey700)),
+                                ),
+                              ],
+                            ),
+                            pw.Text(
+                              "En Lettres : ${sanitizeText(result.averageInWords)}",
+                              style: pw.TextStyle(fontSize: 6, fontStyle: pw.FontStyle.italic, color: darkColor),
+                            ),
+                            pw.SizedBox(height: 1),
+                            pw.Text(
+                              "RANG : ${result.rankFormatted} / ${result.totalCandidates} élèves",
+                              style: pw.TextStyle(fontSize: 7, fontWeight: pw.FontWeight.bold, color: darkColor),
+                            ),
+                          ],
+                        ),
                       ),
-                    ),
-                  ),
-                  pw.Padding(
-                    padding: const pw.EdgeInsets.symmetric(vertical: 1.6),
-                    child: pw.Text(
-                      g.coefficient.toStringAsFixed(0),
-                      textAlign: pw.TextAlign.center,
-                      style: const pw.TextStyle(fontSize: 6.8),
-                    ),
-                  ),
-                  pw.Padding(
-                    padding: const pw.EdgeInsets.symmetric(vertical: 1.6),
-                    child: pw.Text(
-                      g.pointsFormatted,
-                      textAlign: pw.TextAlign.center,
-                      style: pw.TextStyle(fontSize: 6.8, fontWeight: pw.FontWeight.bold),
-                    ),
-                  ),
-                  pw.Padding(
-                    padding: const pw.EdgeInsets.symmetric(vertical: 1.6),
-                    child: pw.Text(
-                      g.rankFormatted,
-                      textAlign: pw.TextAlign.center,
-                      style: const pw.TextStyle(fontSize: 6.5),
-                    ),
-                  ),
-                  pw.Padding(
-                    padding: const pw.EdgeInsets.symmetric(horizontal: 2, vertical: 1.6),
-                    child: pw.Text(
-                      sanitizeText(g.appreciation),
-                      textAlign: pw.TextAlign.center,
-                      style: pw.TextStyle(fontSize: 6.5, color: g.isAbsent ? errorColor : darkColor),
-                    ),
-                  ),
-                  pw.Padding(
-                    padding: const pw.EdgeInsets.symmetric(horizontal: 2, vertical: 1.6),
-                    child: pw.Text(
-                      sanitizeText(g.subject.teacherName.isNotEmpty ? g.subject.teacherName : "-"),
-                      textAlign: pw.TextAlign.left,
-                      style: const pw.TextStyle(fontSize: 6),
-                    ),
-                  ),
-                ],
-              );
-            }),
-            // Ligne TOTAL DU RELEVÉ
-            pw.TableRow(
-              decoration: const pw.BoxDecoration(color: headerBg),
-              children: [
-                pw.Padding(padding: const pw.EdgeInsets.all(1.8), child: pw.Text("")),
-                pw.Padding(
-                  padding: const pw.EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-                  child: pw.Text(
-                    "TOTAL GÉNÉRAL",
-                    style: pw.TextStyle(fontSize: 7, fontWeight: pw.FontWeight.bold, color: primaryColor),
-                  ),
-                ),
-                pw.Padding(
-                  padding: const pw.EdgeInsets.all(2),
-                  child: pw.Text("-", textAlign: pw.TextAlign.center, style: const pw.TextStyle(fontSize: 7)),
-                ),
-                pw.Padding(
-                  padding: const pw.EdgeInsets.all(2),
-                  child: pw.Text(
-                    result.totalCoefficientFormatted,
-                    textAlign: pw.TextAlign.center,
-                    style: pw.TextStyle(fontSize: 7, fontWeight: pw.FontWeight.bold, color: primaryColor),
-                  ),
-                ),
-                pw.Padding(
-                  padding: const pw.EdgeInsets.all(2),
-                  child: pw.Text(
-                    result.totalPointsFormatted,
-                    textAlign: pw.TextAlign.center,
-                    style: pw.TextStyle(fontSize: 7, fontWeight: pw.FontWeight.bold, color: primaryColor),
-                  ),
-                ),
-                pw.Padding(
-                  padding: const pw.EdgeInsets.all(2),
-                  child: pw.Text("-", textAlign: pw.TextAlign.center, style: const pw.TextStyle(fontSize: 7)),
-                ),
-                pw.Padding(padding: const pw.EdgeInsets.all(2), child: pw.Text("")),
-                pw.Padding(padding: const pw.EdgeInsets.all(2), child: pw.Text("")),
-              ],
-            ),
-          ],
-        ),
 
-        pw.SizedBox(height: 4),
+                      pw.Container(width: 0.5, height: 38, color: borderColor, margin: const pw.EdgeInsets.symmetric(horizontal: 5)),
 
-        // 5. BILAN DE L'EXAMEN & CLASSEMENT (Inspiré de test.pdf)
-        pw.Container(
-          padding: const pw.EdgeInsets.all(5),
-          decoration: pw.BoxDecoration(
-            border: pw.Border.all(color: primaryColor, width: 0.9),
-            borderRadius: const pw.BorderRadius.all(pw.Radius.circular(3)),
-            color: lightBg,
-          ),
-          child: pw.Row(
-            crossAxisAlignment: pw.CrossAxisAlignment.start,
-            children: [
-              // Bloc 1 : Moyenne Générale & En Lettres
-              pw.Expanded(
-                flex: 4,
-                child: pw.Column(
+                      // Bloc 2 : Décision du Jury & Mentions
+                      pw.Expanded(
+                        flex: 4,
+                        child: pw.Column(
+                          crossAxisAlignment: pw.CrossAxisAlignment.center,
+                          children: [
+                            pw.Text(
+                              "DÉCISION DU JURY",
+                              style: pw.TextStyle(fontSize: 6.5, fontWeight: pw.FontWeight.bold, color: darkColor),
+                            ),
+                            pw.SizedBox(height: 2),
+                            pw.Container(
+                              padding: const pw.EdgeInsets.symmetric(horizontal: 8, vertical: 2.5),
+                              decoration: pw.BoxDecoration(
+                                color: result.isAdmitted ? const PdfColor(0.85, 0.98, 0.90) : const PdfColor(0.99, 0.88, 0.88),
+                                border: pw.Border.all(
+                                  color: result.isAdmitted ? successColor : errorColor,
+                                  width: 0.8,
+                                ),
+                                borderRadius: const pw.BorderRadius.all(pw.Radius.circular(2)),
+                              ),
+                              child: pw.Text(
+                                result.decision,
+                                style: pw.TextStyle(
+                                  fontSize: 8,
+                                  fontWeight: pw.FontWeight.bold,
+                                  color: result.isAdmitted ? successColor : errorColor,
+                                ),
+                              ),
+                            ),
+                            pw.SizedBox(height: 2),
+                            pw.Text(
+                              "Mention : ${result.mention}",
+                              style: pw.TextStyle(fontSize: 6.5, fontStyle: pw.FontStyle.italic, color: darkColor),
+                            ),
+                            if (result.specialDistinction != "-")
+                              pw.Container(
+                                margin: const pw.EdgeInsets.only(top: 2),
+                                padding: const pw.EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                                decoration: pw.BoxDecoration(
+                                  color: const PdfColor(0.93, 0.97, 1.0),
+                                  borderRadius: const pw.BorderRadius.all(pw.Radius.circular(2)),
+                                ),
+                                child: pw.Text(
+                                  result.specialDistinction,
+                                  style: pw.TextStyle(fontSize: 6, fontWeight: pw.FontWeight.bold, color: primaryColor),
+                                ),
+                              ),
+                          ],
+                        ),
+                      ),
+
+                      pw.Container(width: 0.5, height: 38, color: borderColor, margin: const pw.EdgeInsets.symmetric(horizontal: 5)),
+
+                      // Bloc 3 : Profil de la Promotion
+                      pw.Expanded(
+                        flex: 4,
+                        child: pw.Column(
+                          crossAxisAlignment: pw.CrossAxisAlignment.start,
+                          children: [
+                            pw.Text(
+                              "STATISTIQUES CLASSE",
+                              style: pw.TextStyle(fontSize: 6.5, fontWeight: pw.FontWeight.bold, color: darkColor),
+                            ),
+                            pw.SizedBox(height: 2),
+                            _buildStatLine("Plus forte moyenne :", "${result.classMaxAverage.toStringAsFixed(2)} / 20"),
+                            _buildStatLine("Moyenne de classe :", "${result.classAverage.toStringAsFixed(2)} / 20"),
+                            _buildStatLine("Plus faible moyenne :", "${result.classMinAverage.toStringAsFixed(2)} / 20"),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+                pw.SizedBox(height: 5),
+
+                // G. SIGNATURES & VALIDATION OFFICIELLE (Avec deux vrais cadres réservés aux cachets)
+                pw.Row(
+                  mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                   crossAxisAlignment: pw.CrossAxisAlignment.start,
                   children: [
-                    pw.Text(
-                      "MOYENNE GÉNÉRALE",
-                      style: pw.TextStyle(fontSize: 6.5, fontWeight: pw.FontWeight.bold, color: darkColor),
-                    ),
-                    pw.SizedBox(height: 1),
-                    pw.Row(
-                      crossAxisAlignment: pw.CrossAxisAlignment.end,
-                      children: [
-                        pw.Text(
-                          result.averageFormatted,
-                          style: pw.TextStyle(
-                            fontSize: 14,
-                            fontWeight: pw.FontWeight.bold,
-                            color: result.isAdmitted ? primaryColor : errorColor,
-                          ),
-                        ),
-                        pw.Padding(
-                          padding: const pw.EdgeInsets.only(bottom: 1.5, left: 2),
-                          child: pw.Text("/ 20", style: const pw.TextStyle(fontSize: 7.5, color: PdfColors.grey700)),
-                        ),
-                      ],
-                    ),
-                    pw.Text(
-                      "En Lettres : ${sanitizeText(result.averageInWords)}",
-                      style: pw.TextStyle(fontSize: 6, fontStyle: pw.FontStyle.italic, color: darkColor),
-                    ),
-                    pw.SizedBox(height: 1),
-                    pw.Text(
-                      "RANG : ${result.rankFormatted} / ${result.totalCandidates} élèves",
-                      style: pw.TextStyle(fontSize: 7, fontWeight: pw.FontWeight.bold, color: darkColor),
-                    ),
-                  ],
-                ),
-              ),
-
-              pw.Container(width: 0.6, height: 38, color: borderColor, margin: const pw.EdgeInsets.symmetric(horizontal: 5)),
-
-              // Bloc 2 : Décision du Jury & Mentions
-              pw.Expanded(
-                flex: 4,
-                child: pw.Column(
-                  crossAxisAlignment: pw.CrossAxisAlignment.center,
-                  children: [
-                    pw.Text(
-                      "DÉCISION DU JURY",
-                      style: pw.TextStyle(fontSize: 6.5, fontWeight: pw.FontWeight.bold, color: darkColor),
-                    ),
-                    pw.SizedBox(height: 2),
+                    // Cadre Signature Gauche : Président du Jury
                     pw.Container(
-                      padding: const pw.EdgeInsets.symmetric(horizontal: 8, vertical: 2.5),
+                      width: 175,
+                      padding: const pw.EdgeInsets.all(5),
                       decoration: pw.BoxDecoration(
-                        color: result.isAdmitted ? const PdfColor(0.85, 0.98, 0.90) : const PdfColor(0.99, 0.88, 0.88),
-                        border: pw.Border.all(
-                          color: result.isAdmitted ? successColor : errorColor,
-                          width: 0.8,
-                        ),
-                        borderRadius: const pw.BorderRadius.all(pw.Radius.circular(2)),
+                        border: pw.Border.all(color: borderColor, width: 0.5),
+                        borderRadius: const pw.BorderRadius.all(pw.Radius.circular(2.5)),
+                        color: lightBg,
                       ),
-                      child: pw.Text(
-                        result.decision,
-                        style: pw.TextStyle(
-                          fontSize: 8,
-                          fontWeight: pw.FontWeight.bold,
-                          color: result.isAdmitted ? successColor : errorColor,
-                        ),
+                      child: pw.Column(
+                        crossAxisAlignment: pw.CrossAxisAlignment.center,
+                        children: [
+                          pw.Text(
+                            sanitizeText(settings.juryPresidentTitle),
+                            style: pw.TextStyle(fontSize: 6.8, fontWeight: pw.FontWeight.bold, color: darkColor),
+                          ),
+                          pw.SizedBox(height: 22),
+                          pw.Text(
+                            "(Visa, Observations & Signature)",
+                            style: const pw.TextStyle(fontSize: 5.2, fontStyle: pw.FontStyle.italic, color: PdfColors.grey600),
+                          ),
+                        ],
                       ),
                     ),
-                    pw.SizedBox(height: 2),
-                    pw.Text(
-                      "Mention : ${result.mention}",
-                      style: pw.TextStyle(fontSize: 6.5, fontStyle: pw.FontStyle.italic, color: darkColor),
-                    ),
-                    if (result.specialDistinction != "-")
-                      pw.Text(
-                        result.specialDistinction,
-                        style: pw.TextStyle(fontSize: 6, fontWeight: pw.FontWeight.bold, color: successColor),
+
+                    // Cadre Signature Droit : Chef d'Établissement
+                    pw.Container(
+                      width: 175,
+                      padding: const pw.EdgeInsets.all(5),
+                      decoration: pw.BoxDecoration(
+                        border: pw.Border.all(color: borderColor, width: 0.5),
+                        borderRadius: const pw.BorderRadius.all(pw.Radius.circular(2.5)),
+                        color: lightBg,
                       ),
+                      child: pw.Column(
+                        crossAxisAlignment: pw.CrossAxisAlignment.center,
+                        children: [
+                          pw.Text(
+                            "Lomé, le $today",
+                            style: const pw.TextStyle(fontSize: 6.2, fontStyle: pw.FontStyle.italic),
+                          ),
+                          pw.SizedBox(height: 1),
+                          pw.Text(
+                            sanitizeText(settings.directorTitle),
+                            style: pw.TextStyle(fontSize: 6.8, fontWeight: pw.FontWeight.bold, color: darkColor),
+                          ),
+                          pw.SizedBox(height: 18),
+                          pw.Text(
+                            sanitizeText(settings.directorName),
+                            style: pw.TextStyle(fontSize: 6.5, fontWeight: pw.FontWeight.bold),
+                          ),
+                        ],
+                      ),
+                    ),
                   ],
                 ),
-              ),
 
-              pw.Container(width: 0.6, height: 38, color: borderColor, margin: const pw.EdgeInsets.symmetric(horizontal: 5)),
+                pw.SizedBox(height: 4),
 
-              // Bloc 3 : Profil de la Promotion
-              pw.Expanded(
-                flex: 4,
-                child: pw.Column(
-                  crossAxisAlignment: pw.CrossAxisAlignment.start,
+                // H. PIED DE PAGE SÉCURISÉ & RÉFÉRENCE OFFICIELLE
+                pw.Row(
+                  mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                   children: [
                     pw.Text(
-                      "STATISTIQUES CLASSE",
-                      style: pw.TextStyle(fontSize: 6.5, fontWeight: pw.FontWeight.bold, color: darkColor),
+                      "Réf. Archive : EB-${exam.academicYear.replaceAll('/', '-')}-${result.schoolClass.series}-${result.student.tableNumber} • Document certifié conforme",
+                      style: const pw.TextStyle(fontSize: 5.2, color: PdfColors.grey700),
                     ),
-                    pw.SizedBox(height: 2),
-                    _buildStatLine("Plus forte moyenne :", "${result.classMaxAverage.toStringAsFixed(2)} / 20"),
-                    _buildStatLine("Moyenne de classe :", "${result.classAverage.toStringAsFixed(2)} / 20"),
-                    _buildStatLine("Plus faible moyenne :", "${result.classMinAverage.toStringAsFixed(2)} / 20"),
+                    pw.Text(
+                      "NB : Il n'est délivré qu'un seul relevé officiel. Toute falsification l'annule.",
+                      style: const pw.TextStyle(fontSize: 5.2, fontStyle: pw.FontStyle.italic, color: PdfColors.grey700),
+                    ),
                   ],
                 ),
-              ),
-            ],
-          ),
-        ),
-
-        pw.SizedBox(height: 6),
-
-        // 6. SIGNATURES & VALIDATION OFFICIELLE
-        pw.Row(
-          mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-          crossAxisAlignment: pw.CrossAxisAlignment.start,
-          children: [
-            pw.Column(
-              crossAxisAlignment: pw.CrossAxisAlignment.center,
-              children: [
-                pw.Text(
-                  sanitizeText(settings.juryPresidentTitle),
-                  style: pw.TextStyle(fontSize: 7, fontWeight: pw.FontWeight.bold, color: darkColor),
-                ),
-                pw.SizedBox(height: 14),
-                pw.Text(
-                  "(Visa & Signature)",
-                  style: const pw.TextStyle(fontSize: 5.5, fontStyle: pw.FontStyle.italic, color: PdfColors.grey600),
-                ),
               ],
             ),
-            pw.Column(
-              crossAxisAlignment: pw.CrossAxisAlignment.center,
-              children: [
-                pw.Text(
-                  "Lomé, le $today",
-                  style: const pw.TextStyle(fontSize: 6.5, fontStyle: pw.FontStyle.italic),
-                ),
-                pw.SizedBox(height: 1),
-                pw.Text(
-                  sanitizeText(settings.directorTitle),
-                  style: pw.TextStyle(fontSize: 7, fontWeight: pw.FontWeight.bold, color: darkColor),
-                ),
-                pw.SizedBox(height: 13),
-                pw.Text(
-                  sanitizeText(settings.directorName),
-                  style: pw.TextStyle(fontSize: 6.5, fontWeight: pw.FontWeight.bold),
-                ),
-              ],
-            ),
-          ],
-        ),
-
-        pw.SizedBox(height: 4),
-
-        // Bas de page Officiel (SANS aucune mention d'Elyxia comme demandé par l'utilisateur)
-        pw.Center(
-          child: pw.Text(
-            "NB : Il n'est délivré qu'un seul relevé de notes officiel.",
-            style: const pw.TextStyle(fontSize: 5.5, fontStyle: pw.FontStyle.italic, color: PdfColors.grey600),
           ),
         ),
       ],

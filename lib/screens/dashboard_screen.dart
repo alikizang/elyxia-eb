@@ -32,25 +32,32 @@ class DashboardScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final stats = CalculationService.computeStatistics(results);
+    final primaryColor = AppColors.fromHex(settings?.primaryColorHex);
+    final accentColor = AppColors.fromHex(settings?.accentColorHex);
+    final isAccentLight = accentColor.computeLuminance() > 0.65;
+    final accentTextColor = isAccentLight ? Colors.black87 : Colors.white;
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(28),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Banner de bienvenue
+          // Banner de bienvenue aux couleurs de l'école avec signature Elyxia EB
           Container(
             padding: const EdgeInsets.all(24),
             decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                colors: [AppColors.primary, AppColors.primaryDark],
+              gradient: LinearGradient(
+                colors: [
+                  primaryColor,
+                  Color.lerp(primaryColor, Colors.black, 0.28) ?? primaryColor,
+                ],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
               borderRadius: BorderRadius.circular(16),
               boxShadow: [
                 BoxShadow(
-                  color: AppColors.primary.withValues(alpha: 0.25),
+                  color: primaryColor.withValues(alpha: 0.25),
                   blurRadius: 16,
                   offset: const Offset(0, 6),
                 ),
@@ -62,22 +69,51 @@ class DashboardScreen extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: AppColors.accent.withValues(alpha: 0.2),
-                          borderRadius: BorderRadius.circular(20),
-                          border: Border.all(color: AppColors.accent.withValues(alpha: 0.5)),
-                        ),
-                        child: Text(
-                          "SESSION OFFICIELLE — ${exam?.title.toUpperCase() ?? 'EXAMEN BLANC'}",
-                          style: const TextStyle(
-                            color: AppColors.accentLight,
-                            fontSize: 11,
-                            fontWeight: FontWeight.bold,
-                            letterSpacing: 0.5,
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: accentColor.withValues(alpha: 0.25),
+                              borderRadius: BorderRadius.circular(20),
+                              border: Border.all(color: accentColor.withValues(alpha: 0.6)),
+                            ),
+                            child: Text(
+                              "SESSION OFFICIELLE — ${exam?.title.toUpperCase() ?? 'EXAMEN BLANC'}",
+                              style: TextStyle(
+                                color: isAccentLight ? Colors.white : accentColor,
+                                fontSize: 11,
+                                fontWeight: FontWeight.bold,
+                                letterSpacing: 0.5,
+                              ),
+                            ),
                           ),
-                        ),
+                          const SizedBox(width: 10),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3.5),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withValues(alpha: 0.15),
+                              borderRadius: BorderRadius.circular(20),
+                              border: Border.all(color: Colors.white24),
+                            ),
+                            child: const Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(Icons.auto_awesome, size: 12, color: Colors.amberAccent),
+                                SizedBox(width: 5),
+                                Text(
+                                  "ELYXIA EB",
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 10.5,
+                                    fontWeight: FontWeight.bold,
+                                    letterSpacing: 0.8,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
                       ),
                       const SizedBox(height: 12),
                       Text(
@@ -104,8 +140,8 @@ class DashboardScreen extends StatelessWidget {
                   icon: const Icon(Icons.print_rounded, size: 20),
                   label: const Text("Imprimer Relevés A5"),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.accent,
-                    foregroundColor: AppColors.primaryDark,
+                    backgroundColor: accentColor,
+                    foregroundColor: accentTextColor,
                     padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
                     elevation: 0,
                     textStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
@@ -127,7 +163,7 @@ class DashboardScreen extends StatelessWidget {
                   value: "${stats.totalStudents}",
                   subtitle: "Inscrits dans la classe",
                   icon: Icons.groups_rounded,
-                  color: AppColors.primary,
+                  color: primaryColor,
                 ),
               ),
               const SizedBox(width: 16),
@@ -182,7 +218,7 @@ class DashboardScreen extends StatelessWidget {
                   title: "Saisie Rapide des Notes",
                   description: "Grille de saisie ergonomique par matière ou par candidat avec validation clavier.",
                   icon: Icons.edit_note_rounded,
-                  color: AppColors.primary,
+                  color: primaryColor,
                   onTap: onGoToMarks,
                 ),
               ),

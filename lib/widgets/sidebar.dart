@@ -72,9 +72,87 @@ class Sidebar extends StatelessWidget {
       ),
       child: Column(
         children: [
+          // Header de Marque Elyxia EB
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            margin: const EdgeInsets.only(left: 12, right: 12, top: 12, bottom: 4),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  primaryColor.withValues(alpha: 0.35),
+                  Colors.white.withValues(alpha: 0.05),
+                ],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(6),
+                  decoration: BoxDecoration(
+                    color: primaryColor,
+                    borderRadius: BorderRadius.circular(6),
+                    boxShadow: [
+                      BoxShadow(
+                        color: primaryColor.withValues(alpha: 0.4),
+                        blurRadius: 4,
+                      ),
+                    ],
+                  ),
+                  child: const Icon(Icons.school_rounded, size: 14, color: Colors.white),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Row(
+                        children: [
+                          const Text(
+                            "ELYXIA",
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w900,
+                              fontSize: 12.5,
+                              letterSpacing: 1.2,
+                            ),
+                          ),
+                          const SizedBox(width: 4),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                            decoration: BoxDecoration(
+                              color: accentColor,
+                              borderRadius: BorderRadius.circular(3),
+                            ),
+                            child: Text(
+                              "EB",
+                              style: TextStyle(
+                                color: accentColor.computeLuminance() > 0.65 ? Colors.black87 : Colors.white,
+                                fontWeight: FontWeight.w900,
+                                fontSize: 8.5,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const Text(
+                        "Suite Examen Blanc",
+                        style: TextStyle(color: Colors.white54, fontSize: 9.5),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+
           // Logo & School Branding Header
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 20),
+            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
             decoration: BoxDecoration(
               border: Border(
                 bottom: BorderSide(
@@ -295,6 +373,22 @@ class Sidebar extends StatelessWidget {
                 _buildNavItem(4, "Procès-Verbal (A4)", Icons.assignment_outlined, primaryColor, accentColor),
                 _buildNavItem(5, "Gestion des Élèves", Icons.people_outline, primaryColor, accentColor),
                 _buildNavItem(6, "Paramètres & Portabilité", Icons.settings_outlined, primaryColor, accentColor),
+              ],
+            ),
+          ),
+
+          // Mention légale et version Elyxia EB
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.verified_rounded, size: 11, color: accentColor.withValues(alpha: 0.8)),
+                const SizedBox(width: 5),
+                const Text(
+                  "Elyxia EB v1.2 • Édition Locale",
+                  style: TextStyle(color: Colors.white38, fontSize: 9.5, letterSpacing: 0.2),
+                ),
               ],
             ),
           ),

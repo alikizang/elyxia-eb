@@ -1497,6 +1497,130 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
                 ),
               ],
             ),
+
+            const SizedBox(height: 28),
+            const Divider(color: AppColors.border),
+            const SizedBox(height: 20),
+
+            // Section Zone de Maintenance & Purge des données de test
+            Row(
+              children: [
+                const Icon(Icons.cleaning_services_rounded, color: Colors.orange, size: 24),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        "Zone de Maintenance & Mise en Production (Raser les données de test)",
+                        style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        "Après vos démonstrations aux équipes pédagogiques, videz les notes et candidats fictifs pour démarrer sur des données réelles.",
+                        style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+
+            Row(
+              children: [
+                // Option 1 : Vider les données de test
+                Expanded(
+                  child: Container(
+                    padding: const EdgeInsets.all(18),
+                    decoration: BoxDecoration(
+                      color: Colors.orange.shade50,
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: Colors.orange.shade200),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Icon(Icons.person_remove_rounded, color: Colors.orange.shade800, size: 22),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                "Vider les Données de Test (Notes & Candidats)",
+                                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.orange.shade900),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        const Text(
+                          "Supprime uniquement les candidats et notes d'exemples. Vos classes, matières, coefficients, logo et configurations sont conservés.",
+                          style: TextStyle(fontSize: 11.5, color: Colors.black87),
+                        ),
+                        const SizedBox(height: 14),
+                        ElevatedButton.icon(
+                          icon: const Icon(Icons.delete_sweep, size: 16),
+                          label: const Text("Nettoyer pour la Production"),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.orange.shade800,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                          ),
+                          onPressed: _confirmClearDemoData,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 20),
+
+                // Option 2 : Reset Usine Complet
+                Expanded(
+                  child: Container(
+                    padding: const EdgeInsets.all(18),
+                    decoration: BoxDecoration(
+                      color: Colors.red.shade50,
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: Colors.red.shade200),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Icon(Icons.restart_alt_rounded, color: Colors.red.shade800, size: 22),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                "Réinitialisation Complète d'Usine",
+                                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.red.shade900),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        const Text(
+                          "Remet à zéro l'ensemble de la base de données SQLite et réinstalle la structure par défaut.",
+                          style: TextStyle(fontSize: 11.5, color: Colors.black87),
+                        ),
+                        const SizedBox(height: 14),
+                        OutlinedButton.icon(
+                          icon: const Icon(Icons.warning, size: 16),
+                          label: const Text("Reset Usine"),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: Colors.red.shade800,
+                            side: BorderSide(color: Colors.red.shade400),
+                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                          ),
+                          onPressed: _confirmResetToFactoryDefaults,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ],
         ),
       ),
@@ -1662,6 +1786,172 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
           ),
         ),
       ],
+    );
+  }
+
+  void _confirmClearDemoData() {
+    final confirmCtrl = TextEditingController();
+    bool deleteExamsToo = false;
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: const Row(
+            children: [
+              Icon(Icons.cleaning_services_rounded, color: Colors.orange),
+              SizedBox(width: 10),
+              Text("Vider les données de test"),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                "Cette opération va supprimer définitivement les élèves et notes d'exemples actuels pour vous permettre de démarrer immédiatement sur des données réelles.\n",
+                style: TextStyle(fontSize: 13),
+              ),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.green.shade50,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.green.shade200),
+                ),
+                child: const Row(
+                  children: [
+                    Icon(Icons.check_circle, size: 20, color: Colors.green),
+                    SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        "Vos classes (1ère, Terminale), matières officielles, coefficients, logo et comptes utilisateurs sont intégralement conservés.",
+                        style: TextStyle(fontSize: 11.5, color: Colors.black87),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 14),
+              CheckboxListTile(
+                contentPadding: EdgeInsets.zero,
+                dense: true,
+                value: deleteExamsToo,
+                title: const Text("Supprimer également les sessions d'examens existantes", style: TextStyle(fontSize: 12)),
+                onChanged: (val) => setDialogState(() => deleteExamsToo = val ?? false),
+              ),
+              const SizedBox(height: 10),
+              const Text("Pour confirmer, tapez le mot VIDER ci-dessous :", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+              const SizedBox(height: 6),
+              TextField(
+                controller: confirmCtrl,
+                decoration: const InputDecoration(
+                  hintText: "Tapez VIDER",
+                  border: OutlineInputBorder(),
+                  isDense: true,
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text("Annuler")),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.orange.shade800, foregroundColor: Colors.white),
+              onPressed: () async {
+                if (confirmCtrl.text.trim().toUpperCase() == 'VIDER') {
+                  await DatabaseHelper.instance.clearDemoData(deleteExams: deleteExamsToo);
+                  if (mounted) {
+                    if (ctx.mounted) Navigator.pop(ctx);
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text("Données de test supprimées avec succès ! Vous pouvez maintenant saisir vos données réelles."),
+                          backgroundColor: AppColors.success,
+                        ),
+                      );
+                    }
+                    widget.onSettingsUpdated();
+                  }
+                } else {
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text("Mot de confirmation incorrect. Tapez VIDER."), backgroundColor: AppColors.error),
+                    );
+                  }
+                }
+              },
+              child: const Text("Confirmer le Nettoyage"),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _confirmResetToFactoryDefaults() {
+    final confirmCtrl = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Row(
+          children: [
+            Icon(Icons.warning_amber_rounded, color: Colors.red),
+            SizedBox(width: 10),
+            Text("Réinitialisation Usine Complète"),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              "Attention : Toutes les données, années, matières, notes, élèves et paramètres personnalisés seront effacés et réinitialisés aux valeurs d'origine d'installation.\n",
+              style: TextStyle(fontSize: 13, color: Colors.red),
+            ),
+            const Text("Pour confirmer, tapez le mot RESET ci-dessous :", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+            const SizedBox(height: 6),
+            TextField(
+              controller: confirmCtrl,
+              decoration: const InputDecoration(
+                hintText: "Tapez RESET",
+                border: OutlineInputBorder(),
+                isDense: true,
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text("Annuler")),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
+            onPressed: () async {
+              if (confirmCtrl.text.trim().toUpperCase() == 'RESET') {
+                await DatabaseHelper.instance.resetToFactoryDefaults();
+                if (mounted) {
+                  if (ctx.mounted) Navigator.pop(ctx);
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text("Application réinitialisée aux paramètres d'origine."),
+                        backgroundColor: AppColors.success,
+                      ),
+                    );
+                  }
+                  widget.onSettingsUpdated();
+                }
+              } else {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text("Mot de confirmation incorrect. Tapez RESET."), backgroundColor: AppColors.error),
+                  );
+                }
+              }
+            },
+            child: const Text("Réinitialiser Complètement"),
+          ),
+        ],
+      ),
     );
   }
 }

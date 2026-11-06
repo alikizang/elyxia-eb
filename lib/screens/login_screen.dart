@@ -2,13 +2,12 @@ import 'dart:convert' show base64Decode;
 import 'package:flutter/material.dart';
 
 import '../data/database_helper.dart';
-import '../models/academic_year.dart';
 import '../models/app_settings.dart';
 import '../models/app_user.dart';
 import '../theme/app_colors.dart';
 
 class LoginScreen extends StatefulWidget {
-  final Function(AppUser user, AcademicYear academicYear) onLoginSuccess;
+  final Function(AppUser user) onLoginSuccess;
 
   const LoginScreen({
     super.key,
@@ -27,8 +26,6 @@ class _LoginScreenState extends State<LoginScreen> {
   String? _errorMessage;
 
   AppSettings? _settings;
-  List<AcademicYear> _academicYears = [];
-  AcademicYear? _selectedYear;
 
   @override
   void initState() {
@@ -40,14 +37,10 @@ class _LoginScreenState extends State<LoginScreen> {
     setState(() => _isLoading = true);
     final db = DatabaseHelper.instance;
     final settings = await db.getSettings();
-    final years = await db.getAcademicYears();
-    final activeYear = await db.getActiveAcademicYear();
 
     if (mounted) {
       setState(() {
         _settings = settings;
-        _academicYears = years;
-        _selectedYear = activeYear;
         _isLoading = false;
       });
     }
@@ -71,10 +64,7 @@ class _LoginScreenState extends State<LoginScreen> {
     final user = await db.authenticate(username, password);
 
     if (user != null) {
-      if (_selectedYear != null && !_selectedYear!.isCurrent) {
-        await db.setCurrentAcademicYear(_selectedYear!.id!);
-      }
-      widget.onLoginSuccess(user, _selectedYear ?? AcademicYear(name: '2025-2026', isCurrent: true));
+      widget.onLoginSuccess(user);
     } else {
       if (mounted) {
         setState(() {
@@ -194,81 +184,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                     ),
 
-                    const SizedBox(height: 24),
-
-                    // Sélecteur d'Année Académique
-                    if (_academicYears.isNotEmpty) ...[
-                      Align(
-                        alignment: Alignment.centerLeft,
-                        child: Text(
-                          "Année Académique de travail",
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                            color: Colors.grey.shade800,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 6),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: AppColors.surfaceSubtle,
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: AppColors.border),
-                        ),
-                        child: DropdownButtonHideUnderline(
-                          child: DropdownButton<AcademicYear>(
-                            isExpanded: true,
-                            value: _selectedYear,
-                            items: _academicYears.map((yr) {
-                              return DropdownMenuItem<AcademicYear>(
-                                value: yr,
-                                child: Row(
-                                  children: [
-                                    Text(
-                                      yr.name,
-                                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
-                                    ),
-                                    const SizedBox(width: 8),
-                                    if (yr.isClosed)
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                        decoration: BoxDecoration(
-                                          color: Colors.red.shade100,
-                                          borderRadius: BorderRadius.circular(4),
-                                        ),
-                                        child: Text(
-                                          "Clôturée",
-                                          style: TextStyle(fontSize: 10, color: Colors.red.shade800, fontWeight: FontWeight.bold),
-                                        ),
-                                      )
-                                    else if (yr.isCurrent)
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                        decoration: BoxDecoration(
-                                          color: Colors.green.shade100,
-                                          borderRadius: BorderRadius.circular(4),
-                                        ),
-                                        child: Text(
-                                          "En cours",
-                                          style: TextStyle(fontSize: 10, color: Colors.green.shade800, fontWeight: FontWeight.bold),
-                                        ),
-                                      ),
-                                  ],
-                                ),
-                              );
-                            }).toList(),
-                            onChanged: (newYr) {
-                              if (newYr != null) {
-                                setState(() => _selectedYear = newYr);
-                              }
-                            },
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                    ],
+                    const SizedBox(height: 20),
 
                     // Champ Utilisateur
                     Align(

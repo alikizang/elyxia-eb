@@ -659,15 +659,6 @@ class DatabaseHelper {
         whereArgs: [classId, academicYear],
         orderBy: 'table_number ASC, last_name ASC',
       );
-      // Si aucun élève pour cette année précise, on charge les élèves de la classe
-      if (res.isEmpty) {
-        res = await db.query(
-          'students',
-          where: 'class_id = ?',
-          whereArgs: [classId],
-          orderBy: 'table_number ASC, last_name ASC',
-        );
-      }
     } else {
       res = await db.query(
         'students',
@@ -714,9 +705,6 @@ class DatabaseHelper {
         whereArgs: [academicYear],
         orderBy: 'id DESC',
       );
-      if (res.isEmpty) {
-        res = await db.query('exams', orderBy: 'id DESC');
-      }
     } else {
       res = await db.query('exams', orderBy: 'id DESC');
     }
@@ -868,5 +856,34 @@ class DatabaseHelper {
       } catch (_) {}
     }
     return buffer.toString();
+  }
+
+  /// Supprime les données de démonstration (élèves et notes) pour démarrer l'utilisation réelle
+  Future<void> clearDemoData({bool deleteExams = false}) async {
+    final db = await database;
+    await db.transaction((txn) async {
+      await txn.delete('marks');
+      await txn.delete('students');
+      if (deleteExams) {
+        await txn.delete('exams');
+      }
+    });
+  }
+
+  /// Réinitialise l'application aux paramètres d'usine complets
+  Future<void> resetToFactoryDefaults() async {
+    final db = await database;
+    await db.transaction((txn) async {
+      await txn.delete('marks');
+      await txn.delete('students');
+      await txn.delete('exams');
+      await txn.delete('subjects');
+      await txn.delete('classes');
+      await txn.delete('users');
+      await txn.delete('academic_years');
+      await txn.delete('settings');
+    });
+    await _seedInitialData(db);
+    await _ensureTablesAndColumns(db);
   }
 }

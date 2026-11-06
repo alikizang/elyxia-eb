@@ -5,12 +5,14 @@ import 'package:file_picker/file_picker.dart';
 import 'dart:io';
 
 import '../data/database_helper.dart';
+import '../models/app_settings.dart';
 import '../models/school_class.dart';
 import '../models/student.dart';
 import '../services/csv_service.dart';
 import '../theme/app_colors.dart';
 
 class StudentsScreen extends StatefulWidget {
+  final AppSettings? settings;
   final SchoolClass schoolClass;
   final List<Student> students;
   final VoidCallback onStudentsChanged;
@@ -19,6 +21,7 @@ class StudentsScreen extends StatefulWidget {
 
   const StudentsScreen({
     super.key,
+    this.settings,
     required this.schoolClass,
     required this.students,
     required this.onStudentsChanged,
@@ -35,6 +38,8 @@ class _StudentsScreenState extends State<StudentsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final primaryColor = AppColors.fromHex(widget.settings?.primaryColorHex);
+
     final filtered = widget.students.where((s) {
       return s.fullName.toLowerCase().contains(_searchQuery.toLowerCase()) ||
           s.tableNumber.contains(_searchQuery) ||
@@ -97,10 +102,10 @@ class _StudentsScreenState extends State<StudentsScreen> {
                     children: [
                       Text(
                         "Gestion des Candidats — ${widget.schoolClass.name}",
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.bold,
-                          color: AppColors.primary,
+                          color: primaryColor,
                         ),
                       ),
                       const SizedBox(height: 4),
@@ -129,8 +134,8 @@ class _StudentsScreenState extends State<StudentsScreen> {
                   icon: const Icon(Icons.upload_file_rounded, size: 18),
                   label: const Text("Importer CSV"),
                   style: OutlinedButton.styleFrom(
-                    foregroundColor: AppColors.primary,
-                    side: const BorderSide(color: AppColors.primary),
+                    foregroundColor: primaryColor,
+                    side: BorderSide(color: primaryColor),
                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                   ),
@@ -142,7 +147,7 @@ class _StudentsScreenState extends State<StudentsScreen> {
                   icon: const Icon(Icons.person_add_rounded, size: 18),
                   label: const Text("Nouveau Candidat"),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primary,
+                    backgroundColor: primaryColor,
                     foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
@@ -209,9 +214,9 @@ class _StudentsScreenState extends State<StudentsScreen> {
                   // En-tête
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                    decoration: const BoxDecoration(
-                      color: AppColors.primary,
-                      borderRadius: BorderRadius.only(
+                    decoration: BoxDecoration(
+                      color: primaryColor,
+                      borderRadius: const BorderRadius.only(
                         topLeft: Radius.circular(11),
                         topRight: Radius.circular(11),
                       ),
@@ -294,7 +299,7 @@ class _StudentsScreenState extends State<StudentsScreen> {
                                         mainAxisAlignment: MainAxisAlignment.center,
                                         children: [
                                           IconButton(
-                                            icon: const Icon(Icons.edit_outlined, size: 18, color: AppColors.primary),
+                                            icon: Icon(Icons.edit_outlined, size: 18, color: primaryColor),
                                             tooltip: "Modifier",
                                             onPressed: widget.isReadOnly ? null : () => _showAddEditStudentDialog(context, student: student),
                                           ),
@@ -465,7 +470,7 @@ class _StudentsScreenState extends State<StudentsScreen> {
                 }
               },
               style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primary,
+                backgroundColor: AppColors.fromHex(widget.settings?.primaryColorHex),
                 foregroundColor: Colors.white,
               ),
               child: Text(isEdit ? "Enregistrer" : "Ajouter"),

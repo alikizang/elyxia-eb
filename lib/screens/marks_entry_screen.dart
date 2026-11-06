@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../data/database_helper.dart';
+import '../models/app_settings.dart';
 import '../models/exam.dart';
 import '../models/mark.dart';
 import '../models/school_class.dart';
@@ -10,6 +11,7 @@ import '../services/calculation_service.dart';
 import '../theme/app_colors.dart';
 
 class MarksEntryScreen extends StatefulWidget {
+  final AppSettings? settings;
   final Exam exam;
   final SchoolClass schoolClass;
   final List<Subject> subjects;
@@ -19,6 +21,7 @@ class MarksEntryScreen extends StatefulWidget {
 
   const MarksEntryScreen({
     super.key,
+    this.settings,
     required this.exam,
     required this.schoolClass,
     required this.subjects,
@@ -192,6 +195,7 @@ class _MarksEntryScreenState extends State<MarksEntryScreen> {
     }
 
     final subjectAvg = gradedCount > 0 ? (sum / gradedCount) : 0.0;
+    final primaryColor = AppColors.fromHex(widget.settings?.primaryColorHex);
 
     return Padding(
       padding: const EdgeInsets.all(28),
@@ -249,10 +253,10 @@ class _MarksEntryScreenState extends State<MarksEntryScreen> {
                     children: [
                       Text(
                         "Saisie des Notes — ${widget.schoolClass.name}",
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.bold,
-                          color: AppColors.primary,
+                          color: primaryColor,
                         ),
                       ),
                       const SizedBox(height: 4),
@@ -274,7 +278,7 @@ class _MarksEntryScreenState extends State<MarksEntryScreen> {
                   child: DropdownButtonHideUnderline(
                     child: DropdownButton<Subject>(
                       value: _selectedSubject,
-                      icon: const Icon(Icons.arrow_drop_down, color: AppColors.primary),
+                      icon: Icon(Icons.arrow_drop_down, color: primaryColor),
                       style: const TextStyle(
                         color: AppColors.textPrimary,
                         fontSize: 13,
@@ -310,7 +314,7 @@ class _MarksEntryScreenState extends State<MarksEntryScreen> {
                       : const Icon(Icons.save_rounded, size: 18),
                   label: Text(_isSaving ? "Enregistrement..." : "Enregistrer les Notes"),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primary,
+                    backgroundColor: primaryColor,
                     foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
@@ -336,7 +340,7 @@ class _MarksEntryScreenState extends State<MarksEntryScreen> {
               children: [
                 Text(
                   "Matière : ${_selectedSubject?.name ?? ''} (Coef : ${_selectedSubject?.coefficient.toInt() ?? 1})",
-                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppColors.primary),
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: primaryColor),
                 ),
                 Text(
                   "Candidats saisis : $gradedCount / ${widget.students.length}",
@@ -378,9 +382,9 @@ class _MarksEntryScreenState extends State<MarksEntryScreen> {
                         // En-tête du tableau
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                          decoration: const BoxDecoration(
-                            color: AppColors.primary,
-                            borderRadius: BorderRadius.only(
+                          decoration: BoxDecoration(
+                            color: primaryColor,
+                            borderRadius: const BorderRadius.only(
                               topLeft: Radius.circular(11),
                               topRight: Radius.circular(11),
                             ),
@@ -484,7 +488,7 @@ class _MarksEntryScreenState extends State<MarksEntryScreen> {
                                           fontSize: 14,
                                           color: isAbsent
                                               ? AppColors.textMuted
-                                              : (score != null && score < 10 ? AppColors.error : AppColors.primary),
+                                              : (score != null && score < 10 ? AppColors.error : primaryColor),
                                         ),
                                         decoration: InputDecoration(
                                           hintText: isAbsent ? "ABSENT" : "Ex: 14.5",
@@ -496,7 +500,7 @@ class _MarksEntryScreenState extends State<MarksEntryScreen> {
                                           ),
                                           focusedBorder: OutlineInputBorder(
                                             borderRadius: BorderRadius.circular(6),
-                                            borderSide: const BorderSide(color: AppColors.primary, width: 2),
+                                            borderSide: BorderSide(color: primaryColor, width: 2),
                                           ),
                                           suffixText: isAbsent ? null : "/20",
                                         ),
@@ -519,7 +523,7 @@ class _MarksEntryScreenState extends State<MarksEntryScreen> {
                                       width: 100,
                                       child: Text(
                                         isAbsent ? "-" : (points != null ? points.toStringAsFixed(2) : "-"),
-                                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppColors.primary),
+                                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: primaryColor),
                                       ),
                                     ),
                                     // Appréciation
