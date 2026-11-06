@@ -32,6 +32,7 @@ class PrintPvScreen extends StatefulWidget {
 
 class _PrintPvScreenState extends State<PrintPvScreen> {
   double _zoomWidth = 950; // Largeur par défaut pour A4 Paysage
+  bool _includeSignatures = true;
 
   void _zoomIn() {
     setState(() {
@@ -103,6 +104,31 @@ class _PrintPvScreenState extends State<PrintPvScreen> {
                   ),
                 ),
                 const SizedBox(width: 16),
+
+                // Interrupteur Signatures Numérisées
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: AppColors.surfaceSubtle,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: AppColors.border),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.draw_rounded, size: 16, color: primaryColor),
+                      const SizedBox(width: 6),
+                      const Text("Signatures numérisées", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                      const SizedBox(width: 6),
+                      Switch(
+                        value: _includeSignatures,
+                        activeThumbColor: primaryColor,
+                        onChanged: (val) => setState(() => _includeSignatures = val),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 12),
 
                 // Barre de Zoom
                 Container(
@@ -183,6 +209,7 @@ class _PrintPvScreenState extends State<PrintPvScreen> {
                     schoolClass: widget.schoolClass,
                     subjects: widget.subjects,
                     results: widget.results,
+                    applySignatures: _includeSignatures,
                   ),
                 ),
               ),

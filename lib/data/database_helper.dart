@@ -258,6 +258,12 @@ class DatabaseHelper {
     await _safeAddColumn(db, 'settings', 'primary_color', "TEXT NOT NULL DEFAULT '#22577A'");
     await _safeAddColumn(db, 'settings', 'accent_color', "TEXT NOT NULL DEFAULT '#3BCC97'");
     await _safeAddColumn(db, 'settings', 'logo_base64', "TEXT");
+    await _safeAddColumn(db, 'settings', 'director_signature_base64', "TEXT");
+    await _safeAddColumn(db, 'settings', 'jury_signature_base64', "TEXT");
+    await _safeAddColumn(db, 'settings', 'school_stamp_base64', "TEXT");
+    await _safeAddColumn(db, 'settings', 'auto_apply_director_sig', "INTEGER NOT NULL DEFAULT 1");
+    await _safeAddColumn(db, 'settings', 'auto_apply_jury_sig', "INTEGER NOT NULL DEFAULT 0");
+    await _safeAddColumn(db, 'settings', 'auto_apply_stamp', "INTEGER NOT NULL DEFAULT 1");
 
     // Colonnes dynamiques dans 'students'
     await _safeAddColumn(db, 'students', 'is_repeater', "INTEGER NOT NULL DEFAULT 0");
@@ -694,6 +700,46 @@ class DatabaseHelper {
     await batch.commit(noResult: true);
   }
 
+  Future<int> importStudentsFromPreviousYear({
+    required List<Student> students,
+    required int targetClassId,
+    required String targetAcademicYear,
+    bool autoRenumber = true,
+  }) async {
+    final db = await database;
+    int nextTableNum = 1;
+    final existing = await getStudentsForClass(targetClassId, academicYear: targetAcademicYear);
+    if (existing.isNotEmpty) {
+      for (final s in existing) {
+        final parsed = int.tryParse(s.tableNumber);
+        if (parsed != null && parsed >= nextTableNum) {
+          nextTableNum = parsed + 1;
+        }
+      }
+    }
+
+    final batch = db.batch();
+    for (int i = 0; i < students.length; i++) {
+      final s = students[i];
+      final tableNum = autoRenumber ? (nextTableNum + i).toString().padLeft(3, '0') : s.tableNumber;
+      final newStudent = Student(
+        classId: targetClassId,
+        matricule: s.matricule,
+        tableNumber: tableNum,
+        lastName: s.lastName,
+        firstName: s.firstName,
+        gender: s.gender,
+        birthDate: s.birthDate,
+        birthPlace: s.birthPlace,
+        isRepeater: s.isRepeater,
+        academicYear: targetAcademicYear,
+      );
+      batch.insert('students', newStudent.toMap());
+    }
+    await batch.commit(noResult: true);
+    return students.length;
+  }
+
   // ==================== EXAMS ====================
   Future<List<Exam>> getExams({String? academicYear}) async {
     final db = await database;
@@ -738,6 +784,16 @@ class DatabaseHelper {
   Future<void> updateExam(Exam exam) async {
     final db = await database;
     await db.update('exams', exam.toMap(), where: 'id = ?', whereArgs: [exam.id]);
+  }
+
+  Future<void> setActiveExam(int examId, String academicYear) async {
+    final db = await database;
+    await db.transaction((txn) async {
+      // Désactiver toutes les autres sessions de l'année
+      await txn.update('exams', {'is_active': 0}, where: 'academic_year = ?', whereArgs: [academicYear]);
+      // Activer la session sélectionnée
+      await txn.update('exams', {'is_active': 1}, where: 'id = ?', whereArgs: [examId]);
+    });
   }
 
   Future<void> deleteExam(int id) async {

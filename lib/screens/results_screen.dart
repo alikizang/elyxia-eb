@@ -120,10 +120,13 @@ class _ResultsScreenState extends State<ResultsScreen> {
                   icon: const Icon(Icons.table_chart_rounded, size: 18),
                   label: const Text("Procès-Verbal (PV A4)"),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.info,
+                    backgroundColor: Color.lerp(primaryColor, Colors.black, 0.12) ?? primaryColor,
                     foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      side: BorderSide(color: Colors.white.withValues(alpha: 0.2)),
+                    ),
                     elevation: 0,
                   ),
                 ),

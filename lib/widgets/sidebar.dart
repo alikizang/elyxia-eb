@@ -244,12 +244,27 @@ class Sidebar extends StatelessWidget {
                             items: academicYears.map((yr) {
                               return DropdownMenuItem<AcademicYear>(
                                 value: yr,
-                                child: Text(
-                                  "${yr.name}${yr.isClosed ? ' 🔒 (Clôturée)' : ''}",
-                                  style: TextStyle(
-                                    color: yr.isClosed ? Colors.redAccent : Colors.white,
-                                    fontSize: 11,
-                                  ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Text(
+                                      yr.name,
+                                      style: TextStyle(
+                                        color: yr.isClosed ? Colors.white70 : Colors.white,
+                                        fontSize: 11.5,
+                                        fontWeight: yr.name == selectedYear?.name ? FontWeight.bold : FontWeight.normal,
+                                      ),
+                                    ),
+                                    if (yr.isClosed) ...[
+                                      const SizedBox(width: 6),
+                                      const Icon(Icons.lock_rounded, size: 12, color: Colors.redAccent),
+                                      const SizedBox(width: 3),
+                                      const Text(
+                                        "(Clôturée)",
+                                        style: TextStyle(color: Colors.redAccent, fontSize: 10, fontWeight: FontWeight.w600),
+                                      ),
+                                    ],
+                                  ],
                                 ),
                               );
                             }).toList(),

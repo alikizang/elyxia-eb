@@ -176,11 +176,24 @@ class _MainLayoutScreenState extends State<MainLayoutScreen> {
     final exams = await db.getExams(academicYear: _selectedYear?.name);
     final classes = await db.getClasses();
 
+    Exam? activeExam = _selectedExam;
+    if (exams.isNotEmpty) {
+      final foundActive = exams.where((e) => e.isActive).toList();
+      if (foundActive.isNotEmpty) {
+        activeExam = foundActive.first;
+      } else if (!exams.any((e) => e.id == _selectedExam?.id)) {
+        activeExam = exams.first;
+      }
+    } else {
+      activeExam = null;
+    }
+
     setState(() {
       _settings = settings;
       _academicYears = years;
       _exams = exams;
       _classes = classes;
+      _selectedExam = activeExam;
     });
 
     widget.onThemeChanged();
@@ -221,6 +234,7 @@ class _MainLayoutScreenState extends State<MainLayoutScreen> {
         case 0:
           content = DashboardScreen(
             settings: _settings,
+            selectedYear: _selectedYear,
             exam: _selectedExam,
             schoolClass: _selectedClass,
             results: _results,
@@ -305,6 +319,7 @@ class _MainLayoutScreenState extends State<MainLayoutScreen> {
             currentUser: widget.currentUser,
             onSettingsUpdated: _onDataChanged,
             onYearChanged: _onYearChanged,
+            onExamChanged: _onExamChanged,
           );
           break;
         default:

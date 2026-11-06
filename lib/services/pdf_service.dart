@@ -62,6 +62,16 @@ class PdfService {
     return null;
   }
 
+  /// Décode une chaîne Base64 en bytes
+  static Uint8List? _decodeBase64(String? base64Str) {
+    if (base64Str == null || base64Str.isEmpty) return null;
+    try {
+      return base64Decode(base64Str);
+    } catch (_) {
+      return null;
+    }
+  }
+
   /// Convertit une couleur Hex en PdfColor
   static PdfColor _getPdfPrimary(AppSettings settings) {
     final c = AppColors.fromHex(settings.primaryColorHex);
@@ -78,9 +88,13 @@ class PdfService {
     required AppSettings settings,
     required Exam exam,
     required StudentResult result,
+    bool applySignatures = true,
   }) async {
     final theme = await _loadPdfTheme();
     final logoBytes = await _loadSchoolLogo(settings);
+    final directorSigBytes = (applySignatures && settings.autoApplyDirectorSignature) ? _decodeBase64(settings.directorSignatureBase64) : null;
+    final jurySigBytes = (applySignatures && settings.autoApplyJurySignature) ? _decodeBase64(settings.jurySignatureBase64) : null;
+    final stampBytes = (applySignatures && settings.autoApplyStamp) ? _decodeBase64(settings.schoolStampBase64) : null;
 
     final pdf = pw.Document(
       title: "Relevé - ${result.student.fullName}",
@@ -98,6 +112,10 @@ class PdfService {
           exam: exam,
           result: result,
           logoBytes: logoBytes,
+          directorSigBytes: directorSigBytes,
+          jurySigBytes: jurySigBytes,
+          stampBytes: stampBytes,
+          applySignatures: applySignatures,
         ),
       ),
     );
@@ -110,9 +128,13 @@ class PdfService {
     required AppSettings settings,
     required Exam exam,
     required List<StudentResult> results,
+    bool applySignatures = true,
   }) async {
     final theme = await _loadPdfTheme();
     final logoBytes = await _loadSchoolLogo(settings);
+    final directorSigBytes = (applySignatures && settings.autoApplyDirectorSignature) ? _decodeBase64(settings.directorSignatureBase64) : null;
+    final jurySigBytes = (applySignatures && settings.autoApplyJurySignature) ? _decodeBase64(settings.jurySignatureBase64) : null;
+    final stampBytes = (applySignatures && settings.autoApplyStamp) ? _decodeBase64(settings.schoolStampBase64) : null;
 
     final pdf = pw.Document(
       title: "Relevés de notes - ${results.isNotEmpty ? results.first.schoolClass.name : ''}",
@@ -131,6 +153,10 @@ class PdfService {
             exam: exam,
             result: result,
             logoBytes: logoBytes,
+            directorSigBytes: directorSigBytes,
+            jurySigBytes: jurySigBytes,
+            stampBytes: stampBytes,
+            applySignatures: applySignatures,
           ),
         ),
       );
@@ -146,6 +172,10 @@ class PdfService {
     required Exam exam,
     required StudentResult result,
     Uint8List? logoBytes,
+    Uint8List? directorSigBytes,
+    Uint8List? jurySigBytes,
+    Uint8List? stampBytes,
+    bool applySignatures = true,
   }) {
     final today = DateFormat('dd/MM/yyyy').format(DateTime.now());
     final primaryColor = _getPdfPrimary(settings);
@@ -726,7 +756,15 @@ class PdfService {
                             sanitizeText(settings.juryPresidentTitle),
                             style: pw.TextStyle(fontSize: 6.8, fontWeight: pw.FontWeight.bold, color: darkColor),
                           ),
-                          pw.SizedBox(height: 22),
+                          if (applySignatures && jurySigBytes != null) ...[
+                            pw.SizedBox(height: 1),
+                            pw.Container(
+                              height: 22,
+                              child: pw.Image(pw.MemoryImage(jurySigBytes), fit: pw.BoxFit.contain),
+                            ),
+                          ] else ...[
+                            pw.SizedBox(height: 22),
+                          ],
                           pw.Text(
                             "(Visa, Observations & Signature)",
                             style: const pw.TextStyle(fontSize: 5.2, fontStyle: pw.FontStyle.italic, color: PdfColors.grey600),
@@ -756,7 +794,33 @@ class PdfService {
                             sanitizeText(settings.directorTitle),
                             style: pw.TextStyle(fontSize: 6.8, fontWeight: pw.FontWeight.bold, color: darkColor),
                           ),
-                          pw.SizedBox(height: 18),
+                          if (applySignatures && (directorSigBytes != null || stampBytes != null)) ...[
+                            pw.SizedBox(height: 1),
+                            pw.Container(
+                              height: 22,
+                              child: pw.Row(
+                                mainAxisAlignment: pw.MainAxisAlignment.center,
+                                crossAxisAlignment: pw.CrossAxisAlignment.center,
+                                children: [
+                                  if (stampBytes != null)
+                                    pw.Container(
+                                      width: 28,
+                                      height: 22,
+                                      margin: const pw.EdgeInsets.only(right: 6),
+                                      child: pw.Image(pw.MemoryImage(stampBytes), fit: pw.BoxFit.contain),
+                                    ),
+                                  if (directorSigBytes != null)
+                                    pw.Container(
+                                      width: 48,
+                                      height: 22,
+                                      child: pw.Image(pw.MemoryImage(directorSigBytes), fit: pw.BoxFit.contain),
+                                    ),
+                                ],
+                              ),
+                            ),
+                          ] else ...[
+                            pw.SizedBox(height: 18),
+                          ],
                           pw.Text(
                             sanitizeText(settings.directorName),
                             style: pw.TextStyle(fontSize: 6.5, fontWeight: pw.FontWeight.bold),
@@ -798,9 +862,13 @@ class PdfService {
     required SchoolClass schoolClass,
     required List<Subject> subjects,
     required List<StudentResult> results,
+    bool applySignatures = true,
   }) async {
     final theme = await _loadPdfTheme();
     final logoBytes = await _loadSchoolLogo(settings);
+    final directorSigBytes = (applySignatures && settings.autoApplyDirectorSignature) ? _decodeBase64(settings.directorSignatureBase64) : null;
+    final jurySigBytes = (applySignatures && settings.autoApplyJurySignature) ? _decodeBase64(settings.jurySignatureBase64) : null;
+    final stampBytes = (applySignatures && settings.autoApplyStamp) ? _decodeBase64(settings.schoolStampBase64) : null;
     final primaryColor = _getPdfPrimary(settings);
     const darkColor = PdfColor.fromInt(0xFF1E293B);
     const headerBg = PdfColor.fromInt(0xFFF1F5F9);
@@ -1043,7 +1111,15 @@ class PdfService {
                         sanitizeText(settings.juryPresidentTitle),
                         style: pw.TextStyle(fontSize: 7.5, fontWeight: pw.FontWeight.bold, color: darkColor),
                       ),
-                      pw.SizedBox(height: 24),
+                      if (applySignatures && jurySigBytes != null) ...[
+                        pw.SizedBox(height: 1),
+                        pw.Container(
+                          height: 24,
+                          child: pw.Image(pw.MemoryImage(jurySigBytes), fit: pw.BoxFit.contain),
+                        ),
+                      ] else ...[
+                        pw.SizedBox(height: 24),
+                      ],
                       pw.Text("(Visa & Signature)", style: const pw.TextStyle(fontSize: 6, fontStyle: pw.FontStyle.italic)),
                     ],
                   ),
@@ -1057,7 +1133,32 @@ class PdfService {
                         sanitizeText(settings.directorTitle),
                         style: pw.TextStyle(fontSize: 7.5, fontWeight: pw.FontWeight.bold, color: darkColor),
                       ),
-                      pw.SizedBox(height: 22),
+                      if (applySignatures && (directorSigBytes != null || stampBytes != null)) ...[
+                        pw.SizedBox(height: 1),
+                        pw.Container(
+                          height: 24,
+                          child: pw.Row(
+                            mainAxisSize: pw.MainAxisSize.min,
+                            children: [
+                              if (stampBytes != null)
+                                pw.Container(
+                                  width: 30,
+                                  height: 24,
+                                  margin: const pw.EdgeInsets.only(right: 6),
+                                  child: pw.Image(pw.MemoryImage(stampBytes), fit: pw.BoxFit.contain),
+                                ),
+                              if (directorSigBytes != null)
+                                pw.Container(
+                                  width: 50,
+                                  height: 24,
+                                  child: pw.Image(pw.MemoryImage(directorSigBytes), fit: pw.BoxFit.contain),
+                                ),
+                            ],
+                          ),
+                        ),
+                      ] else ...[
+                        pw.SizedBox(height: 22),
+                      ],
                       pw.Text(
                         sanitizeText(settings.directorName),
                         style: pw.TextStyle(fontSize: 7, fontWeight: pw.FontWeight.bold),

@@ -141,6 +141,19 @@ class _StudentsScreenState extends State<StudentsScreen> {
                   ),
                 ),
                 const SizedBox(width: 10),
+                // Bouton Importer depuis une autre Année
+                OutlinedButton.icon(
+                  onPressed: widget.isReadOnly ? null : () => _showImportFromPreviousYearDialog(context),
+                  icon: const Icon(Icons.history_edu_rounded, size: 18),
+                  label: const Text("Importer d'une Année"),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: primaryColor,
+                    side: BorderSide(color: primaryColor),
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  ),
+                ),
+                const SizedBox(width: 10),
                 // Bouton Nouveau Candidat
                 ElevatedButton.icon(
                   onPressed: widget.isReadOnly ? null : () => _showAddEditStudentDialog(context),
@@ -271,17 +284,21 @@ class _StudentsScreenState extends State<StudentsScreen> {
                                     SizedBox(
                                       width: 70,
                                       child: Container(
-                                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                                         decoration: BoxDecoration(
-                                          color: student.gender == 'F' ? Colors.pink.shade50 : Colors.blue.shade50,
-                                          borderRadius: BorderRadius.circular(4),
+                                          color: student.gender == 'F' ? primaryColor.withValues(alpha: 0.12) : const Color(0xFFF1F5F9),
+                                          borderRadius: BorderRadius.circular(6),
+                                          border: Border.all(
+                                            color: student.gender == 'F' ? primaryColor.withValues(alpha: 0.35) : const Color(0xFFCBD5E1),
+                                          ),
                                         ),
                                         child: Text(
                                           student.gender == 'F' ? 'Fille' : 'Garçon',
+                                          textAlign: TextAlign.center,
                                           style: TextStyle(
                                             fontSize: 11,
                                             fontWeight: FontWeight.bold,
-                                            color: student.gender == 'F' ? Colors.pink.shade700 : Colors.blue.shade700,
+                                            color: student.gender == 'F' ? primaryColor : const Color(0xFF334155),
                                           ),
                                         ),
                                       ),
@@ -323,6 +340,341 @@ class _StudentsScreenState extends State<StudentsScreen> {
           ),
         ],
       ),
+    );
+  }
+
+  Future<void> _showImportFromPreviousYearDialog(BuildContext context) async {
+    final db = DatabaseHelper.instance;
+    final allYears = await db.getAcademicYears();
+    final allClasses = await db.getClasses();
+
+    if (allYears.isEmpty) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Aucune année scolaire trouvée.")),
+        );
+      }
+      return;
+    }
+
+    final otherYears = allYears.where((y) => y.name != widget.academicYear).toList();
+    String sourceYearName = otherYears.isNotEmpty ? otherYears.first.name : allYears.first.name;
+    SchoolClass sourceClass = widget.schoolClass;
+
+    List<Student> sourceStudents = await db.getStudentsForClass(sourceClass.id!, academicYear: sourceYearName);
+    Set<int> selectedStudentIds = sourceStudents.where((s) => s.id != null).map((s) => s.id!).toSet();
+    bool autoRenumber = true;
+    bool isLoadingStudents = false;
+
+    if (!context.mounted) return;
+
+    final primaryColor = AppColors.fromHex(widget.settings?.primaryColorHex);
+
+    await showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (dialogCtx, setModalState) {
+            void loadSourceStudents() async {
+              setModalState(() => isLoadingStudents = true);
+              final loaded = await db.getStudentsForClass(sourceClass.id!, academicYear: sourceYearName);
+              setModalState(() {
+                sourceStudents = loaded;
+                selectedStudentIds = loaded.where((s) => s.id != null).map((s) => s.id!).toSet();
+                isLoadingStudents = false;
+              });
+            }
+
+            return AlertDialog(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+              title: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: primaryColor.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Icon(Icons.history_edu_rounded, color: primaryColor, size: 22),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          "Importer des Candidats d'une Autre Année",
+                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                        ),
+                        Text(
+                          "Destination : ${widget.schoolClass.name} • Année ${widget.academicYear}",
+                          style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              content: SizedBox(
+                width: 680,
+                height: 480,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: AppColors.surfaceSubtle,
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: AppColors.border),
+                      ),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text("Année Scolaire Source :", style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.textSecondary)),
+                                const SizedBox(height: 4),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 10),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    borderRadius: BorderRadius.circular(6),
+                                    border: Border.all(color: AppColors.border),
+                                  ),
+                                  child: DropdownButtonHideUnderline(
+                                    child: DropdownButton<String>(
+                                      isExpanded: true,
+                                      value: sourceYearName,
+                                      items: allYears.map((y) {
+                                        return DropdownMenuItem<String>(
+                                          value: y.name,
+                                          child: Text(
+                                            "${y.name} ${y.name == widget.academicYear ? '(Actuelle)' : ''}",
+                                            style: TextStyle(
+                                              fontWeight: y.name != widget.academicYear ? FontWeight.bold : FontWeight.normal,
+                                              fontSize: 12.5,
+                                            ),
+                                          ),
+                                        );
+                                      }).toList(),
+                                      onChanged: (newYr) {
+                                        if (newYr != null && newYr != sourceYearName) {
+                                          sourceYearName = newYr;
+                                          loadSourceStudents();
+                                        }
+                                      },
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(width: 14),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text("Classe Source :", style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.textSecondary)),
+                                const SizedBox(height: 4),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 10),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    borderRadius: BorderRadius.circular(6),
+                                    border: Border.all(color: AppColors.border),
+                                  ),
+                                  child: DropdownButtonHideUnderline(
+                                    child: DropdownButton<SchoolClass>(
+                                      isExpanded: true,
+                                      value: sourceClass,
+                                      items: allClasses.map((c) {
+                                        return DropdownMenuItem<SchoolClass>(
+                                          value: c,
+                                          child: Text("${c.name} (${c.examType})", style: const TextStyle(fontSize: 12.5)),
+                                        );
+                                      }).toList(),
+                                      onChanged: (newCls) {
+                                        if (newCls != null && newCls.id != sourceClass.id) {
+                                          sourceClass = newCls;
+                                          loadSourceStudents();
+                                        }
+                                      },
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        Checkbox(
+                          value: sourceStudents.isNotEmpty && selectedStudentIds.length == sourceStudents.length,
+                          tristate: selectedStudentIds.isNotEmpty && selectedStudentIds.length < sourceStudents.length,
+                          activeColor: primaryColor,
+                          onChanged: sourceStudents.isEmpty ? null : (val) {
+                            setModalState(() {
+                              if (val == true) {
+                                selectedStudentIds = sourceStudents.where((s) => s.id != null).map((s) => s.id!).toSet();
+                              } else {
+                                selectedStudentIds.clear();
+                              }
+                            });
+                          },
+                        ),
+                        Text(
+                          "Sélection : ${selectedStudentIds.length} / ${sourceStudents.length} élèves",
+                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12.5),
+                        ),
+                        const Spacer(),
+                        InkWell(
+                          onTap: () => setModalState(() => autoRenumber = !autoRenumber),
+                          child: Row(
+                            children: [
+                              Checkbox(
+                                value: autoRenumber,
+                                activeColor: primaryColor,
+                                onChanged: (v) => setModalState(() => autoRenumber = v ?? true),
+                              ),
+                              const Text("Réassigner des N° de table consécutifs", style: TextStyle(fontSize: 11.5)),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    const Divider(height: 1),
+                    Expanded(
+                      child: isLoadingStudents
+                          ? const Center(child: CircularProgressIndicator())
+                          : sourceStudents.isEmpty
+                              ? Center(
+                                  child: Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      const Icon(Icons.person_off_outlined, size: 36, color: AppColors.textMuted),
+                                      const SizedBox(height: 8),
+                                      Text(
+                                        "Aucun élève trouvé dans la classe ${sourceClass.name} pour l'année $sourceYearName.",
+                                        style: const TextStyle(color: AppColors.textSecondary, fontSize: 12),
+                                      ),
+                                    ],
+                                  ),
+                                )
+                              : ListView.separated(
+                                  itemCount: sourceStudents.length,
+                                  separatorBuilder: (context, index) => const Divider(height: 1, color: AppColors.border),
+                                  itemBuilder: (context, idx) {
+                                    final s = sourceStudents[idx];
+                                    final isSelected = selectedStudentIds.contains(s.id);
+                                    return CheckboxListTile(
+                                      value: isSelected,
+                                      dense: true,
+                                      activeColor: primaryColor,
+                                      onChanged: (val) {
+                                        setModalState(() {
+                                          if (val == true) {
+                                            selectedStudentIds.add(s.id!);
+                                          } else {
+                                            selectedStudentIds.remove(s.id);
+                                          }
+                                        });
+                                      },
+                                      title: Row(
+                                        children: [
+                                          Container(
+                                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                            decoration: BoxDecoration(
+                                              color: AppColors.surfaceSubtle,
+                                              borderRadius: BorderRadius.circular(4),
+                                              border: Border.all(color: AppColors.border),
+                                            ),
+                                            child: Text("N° ${s.tableNumber}", style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                                          ),
+                                          const SizedBox(width: 8),
+                                          Expanded(
+                                            child: Text(
+                                              s.fullName,
+                                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12.5),
+                                            ),
+                                          ),
+                                          Container(
+                                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                            decoration: BoxDecoration(
+                                              color: s.gender == 'F' ? primaryColor.withValues(alpha: 0.1) : const Color(0xFFF1F5F9),
+                                              borderRadius: BorderRadius.circular(4),
+                                            ),
+                                            child: Text(
+                                              s.gender == 'F' ? 'Fille' : 'Garçon',
+                                              style: TextStyle(
+                                                fontSize: 10.5,
+                                                fontWeight: FontWeight.bold,
+                                                color: s.gender == 'F' ? primaryColor : const Color(0xFF334155),
+                                              ),
+                                            ),
+                                          ),
+                                          const SizedBox(width: 8),
+                                          Text(
+                                            s.matricule,
+                                            style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
+                                          ),
+                                        ],
+                                      ),
+                                    );
+                                  },
+                                ),
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(dialogCtx),
+                  child: const Text("Annuler"),
+                ),
+                ElevatedButton.icon(
+                  onPressed: selectedStudentIds.isEmpty
+                      ? null
+                      : () async {
+                          final selectedStudents = sourceStudents.where((s) => selectedStudentIds.contains(s.id)).toList();
+                          Navigator.pop(dialogCtx);
+
+                          final count = await db.importStudentsFromPreviousYear(
+                            students: selectedStudents,
+                            targetClassId: widget.schoolClass.id!,
+                            targetAcademicYear: widget.academicYear,
+                            autoRenumber: autoRenumber,
+                          );
+
+                          widget.onStudentsChanged();
+
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text("$count candidat(s) importé(s) avec succès pour l'année ${widget.academicYear} !"),
+                                backgroundColor: AppColors.success,
+                              ),
+                            );
+                          }
+                        },
+                  icon: const Icon(Icons.download_rounded, size: 18),
+                  label: Text("Importer la Sélection (${selectedStudentIds.length})"),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: primaryColor,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  ),
+                ),
+              ],
+            );
+          },
+        );
+      },
     );
   }
 

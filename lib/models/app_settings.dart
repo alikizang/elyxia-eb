@@ -16,6 +16,12 @@ class AppSettings {
   final String primaryColorHex;
   final String accentColorHex;
   final String? logoBase64;
+  final String? directorSignatureBase64;
+  final String? jurySignatureBase64;
+  final String? schoolStampBase64;
+  final bool autoApplyDirectorSignature;
+  final bool autoApplyJurySignature;
+  final bool autoApplyStamp;
 
   AppSettings({
     this.id = 1,
@@ -35,6 +41,12 @@ class AppSettings {
     this.primaryColorHex = "#22577A",
     this.accentColorHex = "#3BCC97",
     this.logoBase64,
+    this.directorSignatureBase64,
+    this.jurySignatureBase64,
+    this.schoolStampBase64,
+    this.autoApplyDirectorSignature = true,
+    this.autoApplyJurySignature = false,
+    this.autoApplyStamp = true,
   });
 
   factory AppSettings.fromMap(Map<String, dynamic> map) {
@@ -56,6 +68,12 @@ class AppSettings {
       primaryColorHex: map['primary_color'] ?? "#22577A",
       accentColorHex: map['accent_color'] ?? "#3BCC97",
       logoBase64: map['logo_base64'],
+      directorSignatureBase64: map['director_signature_base64'],
+      jurySignatureBase64: map['jury_signature_base64'],
+      schoolStampBase64: map['school_stamp_base64'],
+      autoApplyDirectorSignature: (map['auto_apply_director_sig'] ?? 1) == 1,
+      autoApplyJurySignature: (map['auto_apply_jury_sig'] ?? 0) == 1,
+      autoApplyStamp: (map['auto_apply_stamp'] ?? 1) == 1,
     );
   }
 
@@ -78,6 +96,12 @@ class AppSettings {
       'primary_color': primaryColorHex,
       'accent_color': accentColorHex,
       'logo_base64': logoBase64,
+      'director_signature_base64': directorSignatureBase64,
+      'jury_signature_base64': jurySignatureBase64,
+      'school_stamp_base64': schoolStampBase64,
+      'auto_apply_director_sig': autoApplyDirectorSignature ? 1 : 0,
+      'auto_apply_jury_sig': autoApplyJurySignature ? 1 : 0,
+      'auto_apply_stamp': autoApplyStamp ? 1 : 0,
     };
   }
 
@@ -98,6 +122,12 @@ class AppSettings {
     String? primaryColorHex,
     String? accentColorHex,
     String? logoBase64,
+    String? directorSignatureBase64,
+    String? jurySignatureBase64,
+    String? schoolStampBase64,
+    bool? autoApplyDirectorSignature,
+    bool? autoApplyJurySignature,
+    bool? autoApplyStamp,
   }) {
     return AppSettings(
       id: id,
@@ -117,6 +147,12 @@ class AppSettings {
       primaryColorHex: primaryColorHex ?? this.primaryColorHex,
       accentColorHex: accentColorHex ?? this.accentColorHex,
       logoBase64: logoBase64 ?? this.logoBase64,
+      directorSignatureBase64: directorSignatureBase64 ?? this.directorSignatureBase64,
+      jurySignatureBase64: jurySignatureBase64 ?? this.jurySignatureBase64,
+      schoolStampBase64: schoolStampBase64 ?? this.schoolStampBase64,
+      autoApplyDirectorSignature: autoApplyDirectorSignature ?? this.autoApplyDirectorSignature,
+      autoApplyJurySignature: autoApplyJurySignature ?? this.autoApplyJurySignature,
+      autoApplyStamp: autoApplyStamp ?? this.autoApplyStamp,
     );
   }
 }

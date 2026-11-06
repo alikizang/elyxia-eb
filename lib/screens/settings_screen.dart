@@ -23,6 +23,7 @@ class SettingsScreen extends StatefulWidget {
   final AppUser? currentUser;
   final VoidCallback onSettingsUpdated;
   final Function(AcademicYear) onYearChanged;
+  final Function(Exam) onExamChanged;
 
   const SettingsScreen({
     super.key,
@@ -35,6 +36,7 @@ class SettingsScreen extends StatefulWidget {
     required this.currentUser,
     required this.onSettingsUpdated,
     required this.onYearChanged,
+    required this.onExamChanged,
   });
 
   @override
@@ -59,6 +61,12 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
   late String _selectedPrimaryHex;
   late String _selectedAccentHex;
   String? _customLogoBase64;
+  String? _directorSigBase64;
+  String? _jurySigBase64;
+  String? _schoolStampBase64;
+  late bool _autoApplyDirectorSig;
+  late bool _autoApplyJurySig;
+  late bool _autoApplyStamp;
 
   // Matières
   SchoolClass? _selectedClass;
@@ -72,7 +80,7 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 6, vsync: this);
+    _tabController = TabController(length: 7, vsync: this);
 
     _schoolNameCtrl = TextEditingController(text: widget.settings.schoolName);
     _subTitleCtrl = TextEditingController(text: widget.settings.schoolSubTitle);
@@ -88,6 +96,12 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
     _selectedPrimaryHex = widget.settings.primaryColorHex;
     _selectedAccentHex = widget.settings.accentColorHex;
     _customLogoBase64 = widget.settings.logoBase64;
+    _directorSigBase64 = widget.settings.directorSignatureBase64;
+    _jurySigBase64 = widget.settings.jurySignatureBase64;
+    _schoolStampBase64 = widget.settings.schoolStampBase64;
+    _autoApplyDirectorSig = widget.settings.autoApplyDirectorSignature;
+    _autoApplyJurySig = widget.settings.autoApplyJurySignature;
+    _autoApplyStamp = widget.settings.autoApplyStamp;
 
     if (widget.classes.isNotEmpty) {
       _selectedClass = widget.classes.first;
@@ -153,6 +167,12 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
       primaryColorHex: _selectedPrimaryHex,
       accentColorHex: _selectedAccentHex,
       logoBase64: _customLogoBase64,
+      directorSignatureBase64: _directorSigBase64,
+      jurySignatureBase64: _jurySigBase64,
+      schoolStampBase64: _schoolStampBase64,
+      autoApplyDirectorSignature: _autoApplyDirectorSig,
+      autoApplyJurySignature: _autoApplyJurySig,
+      autoApplyStamp: _autoApplyStamp,
     );
 
     await DatabaseHelper.instance.updateSettings(updated);
@@ -160,6 +180,30 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text("Paramètres et charte graphique enregistrés avec succès !"),
+          backgroundColor: AppColors.success,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      widget.onSettingsUpdated();
+    }
+  }
+
+  Future<void> _saveSignaturesSettings() async {
+    final current = await DatabaseHelper.instance.getSettings();
+    final updated = current.copyWith(
+      directorSignatureBase64: _directorSigBase64,
+      jurySignatureBase64: _jurySigBase64,
+      schoolStampBase64: _schoolStampBase64,
+      autoApplyDirectorSignature: _autoApplyDirectorSig,
+      autoApplyJurySignature: _autoApplyJurySig,
+      autoApplyStamp: _autoApplyStamp,
+    );
+
+    await DatabaseHelper.instance.updateSettings(updated);
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Signatures officielles et cachet enregistrés avec succès !"),
           backgroundColor: AppColors.success,
           behavior: SnackBarBehavior.floating,
         ),
@@ -202,6 +246,72 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
         behavior: SnackBarBehavior.floating,
       ),
     );
+  }
+
+  Future<void> _pickDirectorSignature() async {
+    final result = await FilePicker.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: ['jpg', 'jpeg', 'png', 'webp'],
+    );
+    if (result.isNotEmpty && result.first.path != null) {
+      final bytes = await File(result.first.path!).readAsBytes();
+      setState(() {
+        _directorSigBase64 = base64Encode(bytes);
+      });
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("Signature du Chef d'Établissement importée ! Enregistrez pour valider."),
+            backgroundColor: AppColors.info,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _pickJurySignature() async {
+    final result = await FilePicker.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: ['jpg', 'jpeg', 'png', 'webp'],
+    );
+    if (result.isNotEmpty && result.first.path != null) {
+      final bytes = await File(result.first.path!).readAsBytes();
+      setState(() {
+        _jurySigBase64 = base64Encode(bytes);
+      });
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("Signature du Président du Jury importée ! Enregistrez pour valider."),
+            backgroundColor: AppColors.info,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _pickSchoolStamp() async {
+    final result = await FilePicker.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: ['jpg', 'jpeg', 'png', 'webp'],
+    );
+    if (result.isNotEmpty && result.first.path != null) {
+      final bytes = await File(result.first.path!).readAsBytes();
+      setState(() {
+        _schoolStampBase64 = base64Encode(bytes);
+      });
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("Cachet officiel de l'école importé ! Enregistrez pour valider."),
+            backgroundColor: AppColors.info,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    }
   }
 
   @override
@@ -253,6 +363,7 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
                 indicatorWeight: 3,
                 tabs: const [
                   Tab(icon: Icon(Icons.palette_outlined, size: 18), text: "Identité & Couleurs"),
+                  Tab(icon: Icon(Icons.draw_outlined, size: 18), text: "Signatures & Cachet"),
                   Tab(icon: Icon(Icons.calendar_month_outlined, size: 18), text: "Années Académiques"),
                   Tab(icon: Icon(Icons.menu_book_outlined, size: 18), text: "Matières & Coefs"),
                   Tab(icon: Icon(Icons.event_note_outlined, size: 18), text: "Sessions d'Examens"),
@@ -269,6 +380,7 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
                 controller: _tabController,
                 children: [
                   _buildIdentityAndColorsTab(primaryColor, accentColor),
+                  _buildSignaturesTab(primaryColor, accentColor),
                   _buildAcademicYearsTab(primaryColor, accentColor),
                   _buildSubjectsTab(primaryColor),
                   _buildExamsTab(primaryColor),
@@ -579,6 +691,261 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  // ==================== ONGLET : SIGNATURES & CACHET ====================
+  Widget _buildSignaturesTab(Color primaryColor, Color accentColor) {
+    return SingleChildScrollView(
+      child: Container(
+        padding: const EdgeInsets.all(24),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: AppColors.border),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      "Signatures Numérisées & Cachet Officiel",
+                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: primaryColor),
+                    ),
+                    const SizedBox(height: 4),
+                    const Text(
+                      "Configurez les signatures et le sceau de l'école pour les apposer automatiquement sur les relevés de notes A5 et les PV A4.",
+                      style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
+                    ),
+                  ],
+                ),
+                ElevatedButton.icon(
+                  onPressed: _saveSignaturesSettings,
+                  icon: const Icon(Icons.save_rounded, size: 18),
+                  label: const Text("Enregistrer les Signatures"),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: primaryColor,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 24),
+
+            // Cartes en grille
+            Wrap(
+              spacing: 24,
+              runSpacing: 24,
+              children: [
+                // 1. Signature du Proviseur / Chef d'établissement
+                _buildSignatureCard(
+                  title: "Signature du Chef d'Établissement",
+                  subtitle: widget.settings.directorTitle,
+                  imageBytesBase64: _directorSigBase64,
+                  autoApply: _autoApplyDirectorSig,
+                  primaryColor: primaryColor,
+                  onPick: _pickDirectorSignature,
+                  onClear: () => setState(() => _directorSigBase64 = null),
+                  onToggleAutoApply: (val) => setState(() => _autoApplyDirectorSig = val),
+                  toggleLabel: "Apposer automatiquement sur les relevés A5 et PV A4",
+                ),
+
+                // 2. Signature du Président du Jury
+                _buildSignatureCard(
+                  title: "Signature du Président du Jury",
+                  subtitle: widget.settings.juryPresidentTitle,
+                  imageBytesBase64: _jurySigBase64,
+                  autoApply: _autoApplyJurySig,
+                  primaryColor: primaryColor,
+                  onPick: _pickJurySignature,
+                  onClear: () => setState(() => _jurySigBase64 = null),
+                  onToggleAutoApply: (val) => setState(() => _autoApplyJurySig = val),
+                  toggleLabel: "Apposer automatiquement sur les relevés A5 et PV A4",
+                ),
+
+                // 3. Cachet / Sceau Officiel de l'Établissement
+                _buildSignatureCard(
+                  title: "Cachet / Sceau Officiel de l'École",
+                  subtitle: "Tampon officiel rond ou rectangulaire de l'établissement",
+                  imageBytesBase64: _schoolStampBase64,
+                  autoApply: _autoApplyStamp,
+                  primaryColor: primaryColor,
+                  onPick: _pickSchoolStamp,
+                  onClear: () => setState(() => _schoolStampBase64 = null),
+                  onToggleAutoApply: (val) => setState(() => _autoApplyStamp = val),
+                  toggleLabel: "Apposer automatiquement le cachet officiel",
+                ),
+              ],
+            ),
+
+            const SizedBox(height: 28),
+
+            // Note informative
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: primaryColor.withValues(alpha: 0.06),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: primaryColor.withValues(alpha: 0.2)),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.info_outline_rounded, color: primaryColor, size: 22),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          "Souplesse d'Apposition (Mode Automatique ou Manuel)",
+                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: primaryColor),
+                        ),
+                        const SizedBox(height: 4),
+                        const Text(
+                          "Vous gardez le contrôle total : lors de chaque aperçu avant impression d'un relevé A5 ou d'un Procès-Verbal A4, vous disposez d'un interrupteur direct pour inclure ou retirer les signatures d'un simple clic.",
+                          style: TextStyle(fontSize: 12, color: AppColors.textSecondary, height: 1.4),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSignatureCard({
+    required String title,
+    required String subtitle,
+    required String? imageBytesBase64,
+    required bool autoApply,
+    required Color primaryColor,
+    required VoidCallback onPick,
+    required VoidCallback onClear,
+    required ValueChanged<bool> onToggleAutoApply,
+    required String toggleLabel,
+  }) {
+    return Container(
+      width: 380,
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceSubtle,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.draw_rounded, color: primaryColor, size: 20),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  title,
+                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 2),
+          Text(subtitle, style: const TextStyle(color: AppColors.textSecondary, fontSize: 11.5)),
+          const SizedBox(height: 14),
+
+          // Zone d'aperçu de l'image
+          Container(
+            height: 110,
+            width: double.infinity,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: AppColors.border),
+            ),
+            child: imageBytesBase64 != null
+                ? Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.all(8),
+                        child: Image.memory(
+                          base64Decode(imageBytesBase64),
+                          fit: BoxFit.contain,
+                        ),
+                      ),
+                      Positioned(
+                        top: 4,
+                        right: 4,
+                        child: CircleAvatar(
+                          radius: 14,
+                          backgroundColor: Colors.white.withValues(alpha: 0.9),
+                          child: IconButton(
+                            padding: EdgeInsets.zero,
+                            icon: const Icon(Icons.delete_outline, size: 16, color: AppColors.error),
+                            tooltip: "Supprimer",
+                            onPressed: onClear,
+                          ),
+                        ),
+                      ),
+                    ],
+                  )
+                : Center(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.image_not_supported_outlined, size: 28, color: Colors.grey.shade400),
+                        const SizedBox(height: 6),
+                        Text(
+                          "Aucune image importée\n(Signature manuscrite)",
+                          textAlign: TextAlign.center,
+                          style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
+                        ),
+                      ],
+                    ),
+                  ),
+          ),
+          const SizedBox(height: 12),
+
+          // Bouton importer
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: onPick,
+              icon: const Icon(Icons.upload_file_rounded, size: 16),
+              label: Text(imageBytesBase64 == null ? "Importer l'image" : "Changer l'image"),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: primaryColor,
+                side: BorderSide(color: primaryColor),
+                padding: const EdgeInsets.symmetric(vertical: 10),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+              ),
+            ),
+          ),
+          const SizedBox(height: 8),
+
+          // Switch apposer automatiquement
+          SwitchListTile(
+            value: autoApply,
+            activeThumbColor: primaryColor,
+            dense: true,
+            contentPadding: EdgeInsets.zero,
+            title: Text(
+              toggleLabel,
+              style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600),
+            ),
+            onChanged: onToggleAutoApply,
+          ),
+        ],
       ),
     );
   }
@@ -1119,11 +1486,24 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
                   subtitle: Text("Session: ${ex.sessionDate} • Année: ${ex.academicYear}"),
                   trailing: isActive
                       ? const Chip(label: Text("Active", style: TextStyle(fontSize: 10)))
-                      : OutlinedButton(
+                      : ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: primaryColor,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                          ),
                           onPressed: () async {
-                            final updated = ex.copyWith(isActive: true);
-                            await DatabaseHelper.instance.updateExam(updated);
+                            await DatabaseHelper.instance.setActiveExam(ex.id!, ex.academicYear);
+                            widget.onExamChanged(ex.copyWith(isActive: true));
                             widget.onSettingsUpdated();
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text("Session '${ex.title}' (${ex.sessionDate}) activée avec succès !"),
+                                  backgroundColor: AppColors.success,
+                                ),
+                              );
+                            }
                           },
                           child: const Text("Activer"),
                         ),

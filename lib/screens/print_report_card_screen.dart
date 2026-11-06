@@ -33,6 +33,7 @@ class _PrintReportCardScreenState extends State<PrintReportCardScreen> {
   bool _isBatchMode = true; // true = toute la classe, false = élève individuel
   StudentResult? _selectedStudent;
   double _zoomWidth = 650; // Largeur par défaut permettant un affichage A5 net et lisible
+  bool _includeSignatures = true;
 
   @override
   void initState() {
@@ -247,6 +248,32 @@ class _PrintReportCardScreenState extends State<PrintReportCardScreen> {
                         ),
                       ),
                     ],
+
+                    const Spacer(),
+
+                    // Interrupteur Signatures Numérisées
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: AppColors.surfaceSubtle,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: AppColors.border),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.draw_rounded, size: 16, color: primaryColor),
+                          const SizedBox(width: 6),
+                          const Text("Signatures numérisées", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                          const SizedBox(width: 6),
+                          Switch(
+                            value: _includeSignatures,
+                            activeThumbColor: primaryColor,
+                            onChanged: (val) => setState(() => _includeSignatures = val),
+                          ),
+                        ],
+                      ),
+                    ),
                   ],
                 ),
               ],
@@ -283,12 +310,14 @@ class _PrintReportCardScreenState extends State<PrintReportCardScreen> {
                         settings: widget.settings,
                         exam: widget.exam,
                         results: widget.results,
+                        applySignatures: _includeSignatures,
                       );
                     } else {
                       return PdfService.generateSingleReportCard(
                         settings: widget.settings,
                         exam: widget.exam,
                         result: _selectedStudent ?? widget.results.first,
+                        applySignatures: _includeSignatures,
                       );
                     }
                   },

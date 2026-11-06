@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../models/academic_year.dart';
 import '../models/app_settings.dart';
 import '../models/exam.dart';
 import '../models/school_class.dart';
@@ -9,6 +10,7 @@ import '../theme/app_colors.dart';
 
 class DashboardScreen extends StatelessWidget {
   final AppSettings? settings;
+  final AcademicYear? selectedYear;
   final Exam? exam;
   final SchoolClass? schoolClass;
   final List<StudentResult> results;
@@ -20,6 +22,7 @@ class DashboardScreen extends StatelessWidget {
   const DashboardScreen({
     super.key,
     required this.settings,
+    this.selectedYear,
     required this.exam,
     required this.schoolClass,
     required this.results,
@@ -88,31 +91,32 @@ class DashboardScreen extends StatelessWidget {
                               ),
                             ),
                           ),
-                          const SizedBox(width: 10),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3.5),
-                            decoration: BoxDecoration(
-                              color: Colors.white.withValues(alpha: 0.15),
-                              borderRadius: BorderRadius.circular(20),
-                              border: Border.all(color: Colors.white24),
-                            ),
-                            child: const Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(Icons.auto_awesome, size: 12, color: Colors.amberAccent),
-                                SizedBox(width: 5),
-                                Text(
-                                  "ELYXIA EB",
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 10.5,
-                                    fontWeight: FontWeight.bold,
-                                    letterSpacing: 0.8,
+                          if (selectedYear?.isClosed ?? false) ...[
+                            const SizedBox(width: 10),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: Colors.red.withValues(alpha: 0.25),
+                                borderRadius: BorderRadius.circular(20),
+                                border: Border.all(color: Colors.redAccent.withValues(alpha: 0.6)),
+                              ),
+                              child: const Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(Icons.lock_rounded, size: 12, color: Colors.white),
+                                  SizedBox(width: 5),
+                                  Text(
+                                    "ANNÉE CLÔTURÉE (ARCHIVÉE)",
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 10.5,
+                                      fontWeight: FontWeight.bold,
+                                    ),
                                   ),
-                                ),
-                              ],
+                                ],
+                              ),
                             ),
-                          ),
+                          ],
                         ],
                       ),
                       const SizedBox(height: 12),
@@ -126,7 +130,7 @@ class DashboardScreen extends StatelessWidget {
                       ),
                       const SizedBox(height: 6),
                       Text(
-                        "Classe active : ${schoolClass?.name ?? '-'} (${schoolClass?.examType ?? '-'}) • Session : ${exam?.sessionDate ?? '-'} • Année : ${settings?.academicYear ?? '-'}",
+                        "Classe active : ${schoolClass?.name ?? '-'} (${schoolClass?.examType ?? '-'}) • Session : ${exam?.sessionDate ?? '-'} • Année Scolaire : ${selectedYear?.name ?? exam?.academicYear ?? settings?.academicYear ?? '-'}",
                         style: const TextStyle(
                           color: Colors.white70,
                           fontSize: 13,
