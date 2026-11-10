@@ -14,7 +14,7 @@ class Student {
   Student({
     this.id,
     required this.classId,
-    required this.matricule,
+    this.matricule = '',
     required this.tableNumber,
     required this.lastName,
     required this.firstName,

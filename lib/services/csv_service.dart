@@ -3,6 +3,7 @@ import 'package:csv/csv.dart';
 import '../models/student.dart';
 import '../models/student_result.dart';
 import '../models/subject.dart';
+import 'excel_service.dart';
 
 class CsvService {
   /// Importe une liste d'étudiants depuis une chaîne CSV
@@ -10,6 +11,7 @@ class CsvService {
     String csvData,
     int classId, {
     String academicYear = '2025-2026',
+    int startDefaultTableNumber = 101,
   }) {
     // Détection automatique du délimiteur (; ou , ou \t)
     String delimiter = ',';
@@ -26,7 +28,6 @@ class CsvService {
 
     final students = <Student>[];
 
-    // Recherche dynamique des index de colonnes d'après l'en-tête
     int startRow = 0;
     int colTable = -1;
     int colMatricule = -1;
@@ -71,18 +72,19 @@ class CsvService {
       }
     }
 
-    // Ordre par défaut si aucun en-tête reconnu : [Table/Matricule, Matricule/Table, Nom, Prénoms, Sexe, Date, Lieu, Doublant]
     if (colLastName == -1 && colFirstName == -1) {
       colTable = 0;
-      colMatricule = 1;
-      colLastName = 2;
-      colFirstName = 3;
-      colGender = 4;
-      colBirthDate = 5;
-      colBirthPlace = 6;
+      colLastName = 1;
+      colFirstName = 2;
+      colGender = 3;
+      colBirthDate = 4;
+      colBirthPlace = 5;
+      colMatricule = 6;
       colRepeater = 7;
       startRow = 1;
     }
+
+    int autoTableCounter = startDefaultTableNumber;
 
     for (int i = startRow; i < rows.length; i++) {
       final row = rows[i];
@@ -100,13 +102,16 @@ class CsvService {
 
       String tableNum = colTable >= 0 ? getVal(colTable) : '';
       if (tableNum.isEmpty) {
-        tableNum = (i - startRow + 1).toString().padLeft(3, '0');
+        tableNum = (autoTableCounter++).toString().padLeft(3, '0');
+      } else {
+        final parsed = int.tryParse(tableNum);
+        if (parsed != null && parsed >= autoTableCounter) {
+          autoTableCounter = parsed + 1;
+        }
       }
 
-      String matricule = colMatricule >= 0 ? getVal(colMatricule) : '';
-      if (matricule.isEmpty) {
-        matricule = "VIC-$academicYear-$tableNum";
-      }
+      // Le matricule est optionnel (vide si non spécifié)
+      final matricule = colMatricule >= 0 ? getVal(colMatricule) : '';
 
       final rawGender = (colGender >= 0 ? getVal(colGender) : 'M').toUpperCase().trim();
       final gender = (rawGender == 'F' || rawGender.contains('FILLE') || rawGender.contains('FEMME')) ? 'F' : 'M';
@@ -139,20 +144,124 @@ class CsvService {
   /// Exporte la liste des étudiants en CSV
   static String exportStudentsToCsv(List<Student> students) {
     final rows = <List<dynamic>>[];
-    rows.add(['N° Table', 'Matricule', 'Nom', 'Prénoms', 'Sexe', 'Date Naissance', 'Lieu Naissance', 'Doublant']);
+    rows.add(['N° Table', 'Nom', 'Prénoms', 'Sexe', 'Date Naissance', 'Lieu Naissance', 'Matricule', 'Doublant']);
     for (final s in students) {
       rows.add([
         s.tableNumber,
-        s.matricule,
         s.lastName,
         s.firstName,
         s.gender,
         s.birthDate,
         s.birthPlace,
+        s.matricule,
         s.isRepeater ? 'OUI' : 'NON',
       ]);
     }
     return Csv(fieldDelimiter: ';', lineDelimiter: '\r\n').encode(rows);
+  }
+
+  // ==================== GESTION DES NOTES (MARKS) ====================
+
+  /// Génère un modèle CSV pré-rempli avec les élèves de la classe pour une matière
+  static String generateMarksTemplateCsv({required List<Student> students}) {
+    final rows = <List<dynamic>>[];
+    rows.add(['N° Table', 'Nom & Prénoms', 'Note /20', 'Absent (OUI/NON)']);
+    for (final s in students) {
+      rows.add([s.tableNumber, s.fullName, '', 'NON']);
+    }
+    return Csv(fieldDelimiter: ';', lineDelimiter: '\r\n').encode(rows);
+  }
+
+  /// Parse un CSV contenant des notes de classe
+  static List<ParsedMarkEntry> parseMarksCsv(String csvData) {
+    String delimiter = ';';
+    if (csvData.contains(';') && (!csvData.contains(',') || csvData.indexOf(';') < csvData.indexOf(','))) {
+      delimiter = ';';
+    } else if (csvData.contains(',')) {
+      delimiter = ',';
+    }
+
+    final csvCodec = Csv(fieldDelimiter: delimiter, lineDelimiter: '\n');
+    final rows = csvCodec.decode(csvData.replaceAll('\r\n', '\n').replaceAll('\r', '\n'));
+
+    if (rows.isEmpty) return [];
+
+    final entries = <ParsedMarkEntry>[];
+    int startRow = 0;
+    int colTable = -1;
+    int colName = -1;
+    int colScore = -1;
+    int colAbsent = -1;
+
+    for (int r = 0; r < rows.length && r < 5; r++) {
+      final row = rows[r];
+      final rowStr = row.map((c) => c.toString().toLowerCase().trim()).toList();
+
+      final hasScore = rowStr.any((c) => c.contains('note') || c.contains('score') || c.contains('/20'));
+      final hasTable = rowStr.any((c) => c.contains('table') || c.contains('n°') || c.contains('numéro'));
+
+      if (hasScore || hasTable) {
+        startRow = r + 1;
+        for (int c = 0; c < rowStr.length; c++) {
+          final val = rowStr[c];
+          if (val.contains('table') || val.contains('n°') || val.contains('numéro')) {
+            colTable = c;
+          } else if (val.contains('nom') || val.contains('élève') || val.contains('candidat') || val.contains('prénom')) {
+            colName = c;
+          } else if (val.contains('note') || val.contains('score') || val.contains('/20')) {
+            colScore = c;
+          } else if (val.contains('abs') || val.contains('absence')) {
+            colAbsent = c;
+          }
+        }
+        break;
+      }
+    }
+
+    if (colTable == -1 && colScore == -1) {
+      colTable = 0;
+      colName = 1;
+      colScore = 2;
+      colAbsent = 3;
+      startRow = 1;
+    }
+
+    for (int i = startRow; i < rows.length; i++) {
+      final row = rows[i];
+      if (row.isEmpty || row.every((e) => e.toString().trim().isEmpty)) continue;
+
+      String getVal(int col) {
+        if (col < 0 || col >= row.length) return '';
+        return row[col].toString().trim();
+      }
+
+      final tableNum = colTable >= 0 ? getVal(colTable) : '';
+      final studentName = colName >= 0 ? getVal(colName) : '';
+      final rawScore = colScore >= 0 ? getVal(colScore).replaceAll(',', '.') : '';
+      final rawAbsent = colAbsent >= 0 ? getVal(colAbsent).toUpperCase() : '';
+
+      final isAbsent = rawAbsent == 'OUI' || rawAbsent == 'ABS' || rawAbsent == 'TRUE' || rawAbsent == '1';
+      double? score;
+      if (!isAbsent && rawScore.isNotEmpty) {
+        final parsed = double.tryParse(rawScore);
+        if (parsed != null && parsed >= 0 && parsed <= 20) {
+          score = parsed;
+        }
+      }
+
+      if (tableNum.isNotEmpty || studentName.isNotEmpty) {
+        entries.add(
+          ParsedMarkEntry(
+            tableNumber: tableNum,
+            studentName: studentName,
+            score: score,
+            isAbsent: isAbsent,
+          ),
+        );
+      }
+    }
+
+    return entries;
   }
 
   /// Exporte le tableau récapitulatif complet des notes et moyennes en CSV

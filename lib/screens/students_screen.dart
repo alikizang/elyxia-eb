@@ -266,6 +266,19 @@ class _StudentsScreenState extends State<StudentsScreen> {
                   ),
                 ),
                 const SizedBox(width: 10),
+                // Bouton Numéroter Automatiquement la Classe
+                OutlinedButton.icon(
+                  onPressed: widget.isReadOnly ? null : () => _showAutoRenumberDialog(context),
+                  icon: const Icon(Icons.format_list_numbered_rounded, size: 18),
+                  label: const Text("Numéroter Automatiquement"),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: primaryColor,
+                    side: BorderSide(color: primaryColor),
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  ),
+                ),
+                const SizedBox(width: 10),
                 // Bouton Nouveau Candidat
                 ElevatedButton.icon(
                   onPressed: widget.isReadOnly ? null : () => _showAddEditStudentDialog(context),
@@ -383,8 +396,11 @@ class _StudentsScreenState extends State<StudentsScreen> {
                                     SizedBox(
                                       width: 140,
                                       child: Text(
-                                        student.matricule,
-                                        style: const TextStyle(color: AppColors.textSecondary, fontSize: 12),
+                                        student.matricule.isNotEmpty ? student.matricule : "—",
+                                        style: TextStyle(
+                                          color: student.matricule.isNotEmpty ? AppColors.textSecondary : AppColors.textMuted,
+                                          fontSize: 12,
+                                        ),
                                       ),
                                     ),
                                     Expanded(
@@ -794,16 +810,116 @@ class _StudentsScreenState extends State<StudentsScreen> {
     );
   }
 
-  void _showAddEditStudentDialog(BuildContext context, {Student? student}) {
+  Future<void> _showAutoRenumberDialog(BuildContext context) async {
+    final defaultStart = widget.students.isNotEmpty ? widget.students.first.tableNumber : "101";
+    final startCtrl = TextEditingController(text: defaultStart);
+    bool sortByAlpha = true;
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDlgState) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          title: const Row(
+            children: [
+              Icon(Icons.format_list_numbered_rounded, color: AppColors.primary),
+              SizedBox(width: 10),
+              Text("Numéroter Automatiquement"),
+            ],
+          ),
+          content: SizedBox(
+            width: 440,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  "Assigner automatiquement des numéros de table consécutifs aux ${widget.students.length} candidats de la classe ${widget.schoolClass.name}.",
+                  style: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: startCtrl,
+                  keyboardType: TextInputType.number,
+                  decoration: const InputDecoration(
+                    labelText: "Numéro de table de départ *",
+                    hintText: "Ex : 101",
+                    prefixIcon: Icon(Icons.tag_rounded),
+                  ),
+                ),
+                const SizedBox(height: 14),
+                CheckboxListTile(
+                  contentPadding: EdgeInsets.zero,
+                  dense: true,
+                  value: sortByAlpha,
+                  activeColor: AppColors.fromHex(widget.settings?.primaryColorHex),
+                  title: const Text("Trier par ordre alphabétique (Nom & Prénoms)", style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold)),
+                  subtitle: const Text("Convention officielle des examens nationaux au Togo", style: TextStyle(fontSize: 11, color: AppColors.textSecondary)),
+                  onChanged: (val) => setDlgState(() => sortByAlpha = val ?? true),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text("Annuler"),
+            ),
+            ElevatedButton.icon(
+              onPressed: widget.students.isEmpty
+                  ? null
+                  : () async {
+                      final start = int.tryParse(startCtrl.text.trim()) ?? 101;
+                      Navigator.pop(ctx);
+                      final count = await DatabaseHelper.instance.renumberStudentsForClass(
+                        classId: widget.schoolClass.id!,
+                        academicYear: widget.academicYear,
+                        startNumber: start,
+                        sortByAlphabetical: sortByAlpha,
+                      );
+                      widget.onStudentsChanged();
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text("$count candidat(s) numéroté(s) consécutivement de $start à ${start + count - 1} !"),
+                            backgroundColor: AppColors.success,
+                          ),
+                        );
+                      }
+                    },
+              icon: const Icon(Icons.done_all_rounded, size: 18),
+              label: const Text("Numéroter la Classe"),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.fromHex(widget.settings?.primaryColorHex),
+                foregroundColor: Colors.white,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _showAddEditStudentDialog(BuildContext context, {Student? student}) async {
     final isEdit = student != null;
-    final matriculeCtrl = TextEditingController(text: student?.matricule ?? "VIC-2025-${(widget.students.length + 1).toString().padLeft(3, '0')}");
-    final tableCtrl = TextEditingController(text: student?.tableNumber ?? (widget.students.length + 1).toString().padLeft(3, '0'));
+    String defaultTable = student?.tableNumber ?? '';
+    if (!isEdit) {
+      defaultTable = await DatabaseHelper.instance.getNextTableNumber(
+        widget.schoolClass.id!,
+        academicYear: widget.academicYear,
+      );
+    }
+
+    final matriculeCtrl = TextEditingController(text: student?.matricule ?? '');
+    final tableCtrl = TextEditingController(text: defaultTable);
     final lastNameCtrl = TextEditingController(text: student?.lastName ?? '');
     final firstNameCtrl = TextEditingController(text: student?.firstName ?? '');
     String gender = student?.gender ?? 'M';
     bool isRepeater = student?.isRepeater ?? false;
     final birthDateCtrl = TextEditingController(text: student?.birthDate ?? '15/05/2007');
     final birthPlaceCtrl = TextEditingController(text: student?.birthPlace ?? 'Lomé');
+
+    if (!context.mounted) return;
 
     showDialog(
       context: context,
@@ -829,7 +945,10 @@ class _StudentsScreenState extends State<StudentsScreen> {
                       Expanded(
                         child: TextField(
                           controller: matriculeCtrl,
-                          decoration: const InputDecoration(labelText: "Matricule *"),
+                          decoration: const InputDecoration(
+                            labelText: "Matricule (Optionnel)",
+                            hintText: "Laisser vide si aucun",
+                          ),
                         ),
                       ),
                     ],
@@ -1095,10 +1214,10 @@ class _StudentsScreenState extends State<StudentsScreen> {
   }
 
   Future<void> _downloadCsvTemplate(BuildContext context) async {
-    const template = "N° Table;Matricule;Nom;Prénoms;Sexe;Date Naissance;Lieu Naissance;Doublant\n"
-        "101;VIC-2025-0101;KOUDOSSOU;Koffi Jean-Luc;M;14/05/2007;Lomé;NON\n"
-        "102;VIC-2025-0102;ADJALLÉ;Afiwa Blandine;F;22/09/2007;Aného;NON\n"
-        "103;VIC-2025-0103;MENSAH;Kokou Mawunyo;M;03/01/2008;Kpalimé;OUI\n";
+    const template = "N° Table;Nom;Prénoms;Sexe;Date Naissance;Lieu Naissance;Matricule;Doublant\n"
+        "101;KOUDOSSOU;Koffi Jean-Luc;M;14/05/2007;Lomé;VIC-2025-0101;NON\n"
+        "102;ADJALLÉ;Afiwa Blandine;F;22/09/2007;Aného;;NON\n"
+        "103;MENSAH;Kokou Mawunyo;M;03/01/2008;Kpalimé;;OUI\n";
 
     final savedUri = await FilePicker.saveFile(
       dialogTitle: "Enregistrer le modèle CSV",

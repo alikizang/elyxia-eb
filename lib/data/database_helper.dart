@@ -27,12 +27,28 @@ class DatabaseHelper {
   Future<Database> _initDB(String filePath) async {
     // Initialisation du moteur SQLite natif pour macOS et Windows
     if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
-      sqfliteFfiInit();
-      databaseFactory = databaseFactoryFfi;
+      try {
+        sqfliteFfiInit();
+        databaseFactory = databaseFactoryFfi;
+      } catch (e) {
+        // Déjà initialisé ou géré
+      }
     }
 
-    final docsDir = await getApplicationDocumentsDirectory();
-    final ebDir = Directory(p.join(docsDir.path, 'ElyxiaEB'));
+    String dbDirectoryPath;
+    try {
+      final docsDir = await getApplicationDocumentsDirectory();
+      dbDirectoryPath = p.join(docsDir.path, 'ElyxiaEB');
+    } catch (_) {
+      try {
+        final suppDir = await getApplicationSupportDirectory();
+        dbDirectoryPath = p.join(suppDir.path, 'ElyxiaEB');
+      } catch (_) {
+        dbDirectoryPath = p.join(Directory.current.path, 'ElyxiaEB_Data');
+      }
+    }
+
+    final ebDir = Directory(dbDirectoryPath);
     if (!await ebDir.exists()) {
       await ebDir.create(recursive: true);
     }
@@ -698,6 +714,63 @@ class DatabaseHelper {
       batch.insert('students', s.toMap());
     }
     await batch.commit(noResult: true);
+  }
+
+  /// Détermine le prochain numéro de table automatique pour une classe donnée
+  Future<String> getNextTableNumber(int classId, {String? academicYear}) async {
+    final students = await getStudentsForClass(classId, academicYear: academicYear);
+    if (students.isEmpty) {
+      final cls = await getClassById(classId);
+      final idx = cls?.id ?? classId;
+      final prefix = idx > 0 ? idx : 1;
+      return "${prefix}01";
+    }
+    int maxNum = 0;
+    for (final s in students) {
+      final parsed = int.tryParse(s.tableNumber);
+      if (parsed != null && parsed > maxNum) {
+        maxNum = parsed;
+      }
+    }
+    if (maxNum > 0) {
+      return (maxNum + 1).toString().padLeft(3, '0');
+    }
+    return (students.length + 101).toString().padLeft(3, '0');
+  }
+
+  /// Réassigne et numérote automatiquement tous les candidats d'une classe (ex: par ordre alphabétique)
+  Future<int> renumberStudentsForClass({
+    required int classId,
+    required String academicYear,
+    int startNumber = 101,
+    bool sortByAlphabetical = true,
+  }) async {
+    final db = await database;
+    final students = await getStudentsForClass(classId, academicYear: academicYear);
+    if (students.isEmpty) return 0;
+
+    final sorted = List<Student>.from(students);
+    if (sortByAlphabetical) {
+      sorted.sort((a, b) {
+        final lastCmp = a.lastName.toUpperCase().trim().compareTo(b.lastName.toUpperCase().trim());
+        if (lastCmp != 0) return lastCmp;
+        return a.firstName.toUpperCase().trim().compareTo(b.firstName.toUpperCase().trim());
+      });
+    }
+
+    final batch = db.batch();
+    for (int i = 0; i < sorted.length; i++) {
+      final s = sorted[i];
+      final newTableNumber = (startNumber + i).toString().padLeft(3, '0');
+      batch.update(
+        'students',
+        {'table_number': newTableNumber},
+        where: 'id = ?',
+        whereArgs: [s.id],
+      );
+    }
+    await batch.commit(noResult: true);
+    return sorted.length;
   }
 
   Future<int> importStudentsFromPreviousYear({

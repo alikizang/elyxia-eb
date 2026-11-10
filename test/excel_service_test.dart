@@ -52,4 +52,26 @@ void main() {
     expect(students[1].gender, 'M');
     expect(students[1].isRepeater, true);
   });
+
+  test('Marks template generation and parsing via XLSX and CSV', () {
+    final templateXlsx = ExcelService.generateMarksTemplateXlsx(
+      subjectName: 'Mathématiques',
+      className: 'Terminale D',
+      examTitle: 'Examen Blanc N°1',
+      students: [],
+    );
+    expect(templateXlsx.isNotEmpty, true);
+
+    const sampleCsv = "N° Table;Nom & Prénoms;Note /20;Statut / Absence\n"
+        "101;KOUDOSSOU Koffi;15.5;\n"
+        "102;ADJALLÉ Afiwa;;ABS\n";
+    final parsedMarks = CsvService.parseMarksCsv(sampleCsv);
+    expect(parsedMarks.length, 2);
+    expect(parsedMarks[0].tableNumber, '101');
+    expect(parsedMarks[0].score, 15.5);
+    expect(parsedMarks[0].isAbsent, false);
+
+    expect(parsedMarks[1].tableNumber, '102');
+    expect(parsedMarks[1].isAbsent, true);
+  });
 }

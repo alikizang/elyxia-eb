@@ -1,4 +1,8 @@
+import 'dart:convert' show utf8;
+import 'dart:io';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
+import 'package:file_picker/file_picker.dart';
 
 import '../data/database_helper.dart';
 import '../models/app_settings.dart';
@@ -8,6 +12,8 @@ import '../models/school_class.dart';
 import '../models/student.dart';
 import '../models/subject.dart';
 import '../services/calculation_service.dart';
+import '../services/csv_service.dart';
+import '../services/excel_service.dart';
 import '../theme/app_colors.dart';
 
 class MarksEntryScreen extends StatefulWidget {
@@ -167,6 +173,139 @@ class _MarksEntryScreenState extends State<MarksEntryScreen> {
     }
   }
 
+  Future<void> _downloadMarksTemplate({required bool isExcel}) async {
+    if (_selectedSubject == null) return;
+
+    final subjectName = _selectedSubject!.name;
+    final className = widget.schoolClass.name;
+    final examTitle = widget.exam.title;
+
+    Uint8List bytes;
+    String fileName;
+
+    if (isExcel) {
+      bytes = ExcelService.generateMarksTemplateXlsx(
+        subjectName: subjectName,
+        className: className,
+        examTitle: examTitle,
+        students: widget.students,
+      );
+      fileName = "fiche_notes_${_cleanFileName(subjectName)}_${_cleanFileName(className)}.xlsx";
+    } else {
+      final csvString = CsvService.generateMarksTemplateCsv(students: widget.students);
+      bytes = Uint8List.fromList(utf8.encode(csvString));
+      fileName = "fiche_notes_${_cleanFileName(subjectName)}_${_cleanFileName(className)}.csv";
+    }
+
+    final savedUri = await FilePicker.saveFile(
+      dialogTitle: "Enregistrer la fiche de notes",
+      fileName: fileName,
+      bytes: bytes,
+    );
+
+    if (savedUri != null && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text("Fiche de notes enregistrée avec succès (${isExcel ? 'Excel' : 'CSV'}) !"),
+          backgroundColor: AppColors.success,
+        ),
+      );
+    }
+  }
+
+  Future<void> _importMarks({required bool isExcel}) async {
+    if (_selectedSubject == null) return;
+
+    final result = await FilePicker.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: isExcel ? ['xlsx', 'xls'] : ['csv', 'txt'],
+    );
+
+    if (result.isNotEmpty && result.first.path != null) {
+      final file = File(result.first.path!);
+      List<ParsedMarkEntry> entries;
+
+      if (isExcel) {
+        final bytes = await file.readAsBytes();
+        entries = ExcelService.parseMarksXlsx(bytes);
+      } else {
+        String content;
+        try {
+          content = await file.readAsString();
+        } catch (_) {
+          final b = await file.readAsBytes();
+          content = utf8.decode(b, allowMalformed: true);
+        }
+        entries = CsvService.parseMarksCsv(content);
+      }
+
+      if (entries.isEmpty) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text("Aucune note valide trouvée dans le fichier sélectionné."),
+              backgroundColor: AppColors.error,
+            ),
+          );
+        }
+        return;
+      }
+
+      int matchedCount = 0;
+      for (final entry in entries) {
+        Student? matchedStudent;
+        if (entry.tableNumber.isNotEmpty) {
+          matchedStudent = widget.students.cast<Student?>().firstWhere(
+            (s) => s != null && (s.tableNumber.trim() == entry.tableNumber.trim() ||
+                int.tryParse(s.tableNumber) == int.tryParse(entry.tableNumber)),
+            orElse: () => null,
+          );
+        }
+        if (matchedStudent == null && entry.studentName.isNotEmpty) {
+          final cleanEntry = entry.studentName.toLowerCase().replaceAll(' ', '');
+          matchedStudent = widget.students.cast<Student?>().firstWhere(
+            (s) => s != null && s.fullName.toLowerCase().replaceAll(' ', '') == cleanEntry,
+            orElse: () => null,
+          );
+        }
+
+        if (matchedStudent != null && matchedStudent.id != null) {
+          final sid = matchedStudent.id!;
+          _absentStates[sid] = entry.isAbsent;
+          if (entry.isAbsent) {
+            _controllers[sid]?.text = '';
+          } else if (entry.score != null) {
+            _controllers[sid]?.text = entry.score! % 1 == 0
+                ? entry.score!.toInt().toString()
+                : entry.score!.toStringAsFixed(2);
+          }
+          matchedCount++;
+        }
+      }
+
+      setState(() {});
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              "$matchedCount note(s) chargée(s) avec succès pour '${_selectedSubject!.name}' ! Cliquez sur 'Enregistrer les Notes' pour sauvegarder.",
+            ),
+            backgroundColor: AppColors.success,
+            duration: const Duration(seconds: 4),
+          ),
+        );
+      }
+    }
+  }
+
+  String _cleanFileName(String text) {
+    return text
+        .toLowerCase()
+        .replaceAll(RegExp(r'[^\w\s]+'), '')
+        .replaceAll(RegExp(r'\s+'), '_');
+  }
+
   @override
   Widget build(BuildContext context) {
     if (widget.subjects.isEmpty) {
@@ -298,6 +437,142 @@ class _MarksEntryScreenState extends State<MarksEntryScreen> {
                           _loadExistingMarks();
                         }
                       },
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                // Menu Modèle de Saisie (Excel / CSV)
+                PopupMenuButton<String>(
+                  tooltip: "Télécharger la fiche de notes pré-remplie",
+                  onSelected: (val) {
+                    if (val == 'xlsx') {
+                      _downloadMarksTemplate(isExcel: true);
+                    } else if (val == 'csv') {
+                      _downloadMarksTemplate(isExcel: false);
+                    }
+                  },
+                  itemBuilder: (ctx) => [
+                    PopupMenuItem(
+                      value: 'xlsx',
+                      child: Row(
+                        children: [
+                          Icon(Icons.table_chart_rounded, size: 18, color: Colors.green.shade700),
+                          const SizedBox(width: 10),
+                          const Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text("Modèle Excel (.xlsx)", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                              Text("Fiche pré-remplie avec les élèves de la classe", style: TextStyle(fontSize: 11, color: AppColors.textSecondary)),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                    const PopupMenuDivider(),
+                    const PopupMenuItem(
+                      value: 'csv',
+                      child: Row(
+                        children: [
+                          Icon(Icons.description_outlined, size: 18, color: AppColors.textSecondary),
+                          SizedBox(width: 10),
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text("Modèle Texte CSV (.csv)", style: TextStyle(fontSize: 13)),
+                              Text("Format universel texte délimité", style: TextStyle(fontSize: 11, color: AppColors.textSecondary)),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                  child: OutlinedButton.icon(
+                    onPressed: null,
+                    icon: const Icon(Icons.file_download_outlined, size: 18),
+                    label: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text("Fiche de Notes"),
+                        SizedBox(width: 4),
+                        Icon(Icons.arrow_drop_down, size: 16),
+                      ],
+                    ),
+                    style: OutlinedButton.styleFrom(
+                      disabledForegroundColor: AppColors.textSecondary,
+                      foregroundColor: AppColors.textSecondary,
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                // Menu Importer les Notes (Excel / CSV)
+                PopupMenuButton<String>(
+                  tooltip: "Importer les notes depuis un fichier Excel ou CSV",
+                  enabled: !widget.isReadOnly,
+                  onSelected: (val) {
+                    if (val == 'xlsx') {
+                      _importMarks(isExcel: true);
+                    } else if (val == 'csv') {
+                      _importMarks(isExcel: false);
+                    }
+                  },
+                  itemBuilder: (ctx) => [
+                    PopupMenuItem(
+                      value: 'xlsx',
+                      child: Row(
+                        children: [
+                          Icon(Icons.table_chart_rounded, size: 18, color: Colors.green.shade700),
+                          const SizedBox(width: 10),
+                          const Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text("Importer fichier Excel (.xlsx)", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                              Text("Remplissage automatique par N° de Table", style: TextStyle(fontSize: 11, color: AppColors.textSecondary)),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                    const PopupMenuDivider(),
+                    const PopupMenuItem(
+                      value: 'csv',
+                      child: Row(
+                        children: [
+                          Icon(Icons.upload_file_rounded, size: 18, color: AppColors.textSecondary),
+                          SizedBox(width: 10),
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text("Importer fichier CSV (.csv)", style: TextStyle(fontSize: 13)),
+                              Text("Import délimité par virgule ou point-virgule", style: TextStyle(fontSize: 11, color: AppColors.textSecondary)),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                  child: OutlinedButton.icon(
+                    onPressed: null,
+                    icon: const Icon(Icons.upload_file_rounded, size: 18),
+                    label: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text("Importer Notes"),
+                        const SizedBox(width: 4),
+                        const Icon(Icons.arrow_drop_down, size: 16),
+                      ],
+                    ),
+                    style: OutlinedButton.styleFrom(
+                      disabledForegroundColor: widget.isReadOnly ? AppColors.textMuted : primaryColor,
+                      foregroundColor: primaryColor,
+                      side: BorderSide(color: widget.isReadOnly ? AppColors.border : primaryColor),
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                     ),
                   ),
                 ),

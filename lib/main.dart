@@ -35,6 +35,7 @@ class _ElyxiaEbAppState extends State<ElyxiaEbApp> {
   AcademicYear? _activeYear;
   AppSettings? _settings;
   bool _isLoading = true;
+  String? _errorMessage;
 
   @override
   void initState() {
@@ -43,16 +44,31 @@ class _ElyxiaEbAppState extends State<ElyxiaEbApp> {
   }
 
   Future<void> _loadSettings() async {
-    final db = DatabaseHelper.instance;
-    final settings = await db.getSettings();
-    final year = await db.getActiveAcademicYear();
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
 
-    if (mounted) {
-      setState(() {
-        _settings = settings;
-        _activeYear = year;
-        _isLoading = false;
-      });
+    try {
+      final db = DatabaseHelper.instance;
+      final settings = await db.getSettings();
+      final year = await db.getActiveAcademicYear();
+
+      if (mounted) {
+        setState(() {
+          _settings = settings;
+          _activeYear = year;
+          _isLoading = false;
+        });
+      }
+    } catch (e, stack) {
+      debugPrint("Erreur critique initialisation SQLite/Settings: $e\n$stack");
+      if (mounted) {
+        setState(() {
+          _errorMessage = e.toString();
+          _isLoading = false;
+        });
+      }
     }
   }
 
@@ -73,10 +89,75 @@ class _ElyxiaEbAppState extends State<ElyxiaEbApp> {
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
-      return const MaterialApp(
+      return MaterialApp(
         debugShowCheckedModeBanner: false,
         home: Scaffold(
-          body: Center(child: CircularProgressIndicator()),
+          backgroundColor: const Color(0xFF0F172A),
+          body: Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const SizedBox(
+                  width: 44,
+                  height: 44,
+                  child: CircularProgressIndicator(color: Colors.white, strokeWidth: 3),
+                ),
+                const SizedBox(height: 20),
+                const Text(
+                  "Chargement d'Elyxia EB...",
+                  style: TextStyle(color: Colors.white70, fontSize: 14, fontWeight: FontWeight.bold),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
+    if (_errorMessage != null) {
+      return MaterialApp(
+        debugShowCheckedModeBanner: false,
+        home: Scaffold(
+          backgroundColor: const Color(0xFF0F172A),
+          body: Center(
+            child: Container(
+              constraints: const BoxConstraints(maxWidth: 500),
+              padding: const EdgeInsets.all(32),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: const [BoxShadow(color: Colors.black38, blurRadius: 20)],
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.error_outline_rounded, color: AppColors.error, size: 54),
+                  const SizedBox(height: 16),
+                  const Text(
+                    "Erreur d'initialisation",
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+                  ),
+                  const SizedBox(height: 10),
+                  Text(
+                    "Une erreur est survenue lors de l'accès à la base de données locale :\n$_errorMessage",
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                  ),
+                  const SizedBox(height: 24),
+                  ElevatedButton.icon(
+                    onPressed: _loadSettings,
+                    icon: const Icon(Icons.refresh_rounded, size: 18),
+                    label: const Text("Réessayer"),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primary,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
         ),
       );
     }

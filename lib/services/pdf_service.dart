@@ -189,17 +189,47 @@ class PdfService {
 
     return pw.Stack(
       children: [
-        // 1. FILIGRANE CENTRAL DE L'ÉTABLISSEMENT (Subtil, chic et authentique)
+        // 1. FILIGRANE CENTRAL DE L'ÉTABLISSEMENT (Subtil, chic, sécurisé et authentique)
         if (logoBytes != null)
           pw.Positioned.fill(
             child: pw.Center(
               child: pw.Opacity(
-                opacity: 0.045,
-                child: pw.Image(
-                  pw.MemoryImage(logoBytes),
-                  width: 220,
-                  height: 220,
-                  fit: pw.BoxFit.contain,
+                opacity: 0.058,
+                child: pw.Stack(
+                  alignment: pw.Alignment.center,
+                  children: [
+                    // Anneau extérieur officiel (sécurité filigrane institutionnel)
+                    pw.Container(
+                      width: 246,
+                      height: 246,
+                      decoration: pw.BoxDecoration(
+                        shape: pw.BoxShape.circle,
+                        border: pw.Border.all(
+                          color: primaryColor,
+                          width: 1.2,
+                        ),
+                      ),
+                    ),
+                    // Anneau intérieur de sécurité
+                    pw.Container(
+                      width: 236,
+                      height: 236,
+                      decoration: pw.BoxDecoration(
+                        shape: pw.BoxShape.circle,
+                        border: pw.Border.all(
+                          color: primaryColor,
+                          width: 0.6,
+                        ),
+                      ),
+                    ),
+                    // Logo central de l'établissement
+                    pw.Image(
+                      pw.MemoryImage(logoBytes),
+                      width: 215,
+                      height: 215,
+                      fit: pw.BoxFit.contain,
+                    ),
+                  ],
                 ),
               ),
             ),
@@ -892,8 +922,54 @@ class PdfService {
 
     pdf.addPage(
       pw.MultiPage(
-        pageFormat: PdfPageFormat.a4.landscape,
-        margin: const pw.EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+        pageTheme: pw.PageTheme(
+          pageFormat: PdfPageFormat.a4.landscape,
+          margin: const pw.EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+          buildBackground: (context) {
+            if (logoBytes == null) return pw.SizedBox();
+            return pw.Center(
+              child: pw.Opacity(
+                opacity: 0.05,
+                child: pw.Stack(
+                  alignment: pw.Alignment.center,
+                  children: [
+                    // Anneau extérieur officiel (sécurité filigrane institutionnel PV)
+                    pw.Container(
+                      width: 320,
+                      height: 320,
+                      decoration: pw.BoxDecoration(
+                        shape: pw.BoxShape.circle,
+                        border: pw.Border.all(
+                          color: primaryColor,
+                          width: 1.5,
+                        ),
+                      ),
+                    ),
+                    // Anneau intérieur de sécurité
+                    pw.Container(
+                      width: 308,
+                      height: 308,
+                      decoration: pw.BoxDecoration(
+                        shape: pw.BoxShape.circle,
+                        border: pw.Border.all(
+                          color: primaryColor,
+                          width: 0.75,
+                        ),
+                      ),
+                    ),
+                    // Logo central de l'établissement
+                    pw.Image(
+                      pw.MemoryImage(logoBytes),
+                      width: 280,
+                      height: 280,
+                      fit: pw.BoxFit.contain,
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        ),
         build: (context) => [
           // En-tête officiel du PV
           pw.Row(
