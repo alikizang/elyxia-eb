@@ -8,6 +8,7 @@ import 'models/app_settings.dart';
 import 'models/app_user.dart';
 import 'screens/login_screen.dart';
 import 'screens/main_layout_screen.dart';
+import 'services/window_service.dart';
 import 'theme/app_colors.dart';
 import 'theme/app_theme.dart';
 
@@ -40,6 +41,9 @@ class _ElyxiaEbAppState extends State<ElyxiaEbApp> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      WindowService.maximizeOnStartup();
+    });
     _loadSettings();
   }
 

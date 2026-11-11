@@ -387,7 +387,6 @@ class _MarksEntryScreenState extends State<MarksEntryScreen> {
             ),
             child: LayoutBuilder(
               builder: (context, constraints) {
-                final isCompact = constraints.maxWidth < 1180;
                 final actionWidgets = <Widget>[
                   // Sélecteur de matière
                   Container(
@@ -597,32 +596,14 @@ class _MarksEntryScreenState extends State<MarksEntryScreen> {
                   ],
                 );
 
-                if (isCompact) {
-                  return Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      titleWidget,
-                      const SizedBox(height: 14),
-                      Wrap(
-                        spacing: 10,
-                        runSpacing: 10,
-                        crossAxisAlignment: WrapCrossAlignment.center,
-                        children: actionWidgets,
-                      ),
-                    ],
-                  );
-                }
-
-                return Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  crossAxisAlignment: CrossAxisAlignment.center,
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Expanded(child: titleWidget),
-                    const SizedBox(width: 16),
+                    titleWidget,
+                    const SizedBox(height: 14),
                     Wrap(
                       spacing: 10,
                       runSpacing: 10,
-                      alignment: WrapAlignment.end,
                       crossAxisAlignment: WrapCrossAlignment.center,
                       children: actionWidgets,
                     ),

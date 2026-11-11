@@ -189,51 +189,66 @@ class PdfService {
 
     return pw.Stack(
       children: [
-        // 1. FILIGRANE CENTRAL DE L'ÉTABLISSEMENT (Subtil, chic, sécurisé et authentique)
-        if (logoBytes != null)
-          pw.Positioned.fill(
-            child: pw.Center(
-              child: pw.Opacity(
-                opacity: 0.058,
-                child: pw.Stack(
-                  alignment: pw.Alignment.center,
-                  children: [
-                    // Anneau extérieur officiel (sécurité filigrane institutionnel)
-                    pw.Container(
-                      width: 246,
-                      height: 246,
-                      decoration: pw.BoxDecoration(
-                        shape: pw.BoxShape.circle,
-                        border: pw.Border.all(
-                          color: primaryColor,
-                          width: 1.2,
-                        ),
+        // 1. FILIGRANE CENTRAL DE L'ÉTABLISSEMENT (Sécurisé, authentique et visible à l'écran comme au papier)
+        pw.Positioned.fill(
+          child: pw.Center(
+            child: pw.Opacity(
+              opacity: 0.12,
+              child: pw.Stack(
+                alignment: pw.Alignment.center,
+                children: [
+                  // Anneau extérieur officiel (sécurité filigrane institutionnel)
+                  pw.Container(
+                    width: 250,
+                    height: 250,
+                    decoration: pw.BoxDecoration(
+                      shape: pw.BoxShape.circle,
+                      border: pw.Border.all(
+                        color: primaryColor,
+                        width: 1.5,
                       ),
                     ),
-                    // Anneau intérieur de sécurité
-                    pw.Container(
-                      width: 236,
-                      height: 236,
-                      decoration: pw.BoxDecoration(
-                        shape: pw.BoxShape.circle,
-                        border: pw.Border.all(
-                          color: primaryColor,
-                          width: 0.6,
-                        ),
+                  ),
+                  // Anneau intérieur de sécurité
+                  pw.Container(
+                    width: 238,
+                    height: 238,
+                    decoration: pw.BoxDecoration(
+                      shape: pw.BoxShape.circle,
+                      border: pw.Border.all(
+                        color: primaryColor,
+                        width: 0.8,
                       ),
                     ),
-                    // Logo central de l'établissement
+                  ),
+                  // Logo central de l'établissement ou Sceau textuel de secours
+                  if (logoBytes != null)
                     pw.Image(
                       pw.MemoryImage(logoBytes),
                       width: 215,
                       height: 215,
                       fit: pw.BoxFit.contain,
+                    )
+                  else
+                    pw.Container(
+                      width: 215,
+                      height: 215,
+                      alignment: pw.Alignment.center,
+                      child: pw.Text(
+                        sanitizeText(settings.schoolName.toUpperCase()),
+                        textAlign: pw.TextAlign.center,
+                        style: pw.TextStyle(
+                          color: primaryColor,
+                          fontSize: 16,
+                          fontWeight: pw.FontWeight.bold,
+                        ),
+                      ),
                     ),
-                  ],
-                ),
+                ],
               ),
             ),
           ),
+        ),
 
         // 2. CADRE DE SÉCURITÉ OFFICIEL (Double filet institutionnel de diplôme)
         pw.Container(
@@ -500,7 +515,7 @@ class PdfService {
                       final isAlt = idx % 2 == 1;
 
                       return pw.TableRow(
-                        decoration: pw.BoxDecoration(color: isAlt ? headerBg : PdfColors.white),
+                        decoration: isAlt ? const pw.BoxDecoration(color: headerBg) : const pw.BoxDecoration(),
                         children: [
                           pw.Padding(
                             padding: const pw.EdgeInsets.symmetric(vertical: 2.3),
@@ -926,10 +941,9 @@ class PdfService {
           pageFormat: PdfPageFormat.a4.landscape,
           margin: const pw.EdgeInsets.symmetric(horizontal: 18, vertical: 16),
           buildBackground: (context) {
-            if (logoBytes == null) return pw.SizedBox();
             return pw.Center(
               child: pw.Opacity(
-                opacity: 0.05,
+                opacity: 0.10,
                 child: pw.Stack(
                   alignment: pw.Alignment.center,
                   children: [
@@ -957,13 +971,29 @@ class PdfService {
                         ),
                       ),
                     ),
-                    // Logo central de l'établissement
-                    pw.Image(
-                      pw.MemoryImage(logoBytes),
-                      width: 280,
-                      height: 280,
-                      fit: pw.BoxFit.contain,
-                    ),
+                    // Logo central de l'établissement ou Sceau textuel
+                    if (logoBytes != null)
+                      pw.Image(
+                        pw.MemoryImage(logoBytes),
+                        width: 280,
+                        height: 280,
+                        fit: pw.BoxFit.contain,
+                      )
+                    else
+                      pw.Container(
+                        width: 280,
+                        height: 280,
+                        alignment: pw.Alignment.center,
+                        child: pw.Text(
+                          sanitizeText(settings.schoolName.toUpperCase()),
+                          textAlign: pw.TextAlign.center,
+                          style: pw.TextStyle(
+                            color: primaryColor,
+                            fontSize: 22,
+                            fontWeight: pw.FontWeight.bold,
+                          ),
+                        ),
+                      ),
                   ],
                 ),
               ),
@@ -1070,7 +1100,7 @@ class PdfService {
                 final isAlt = idx % 2 == 1;
 
                 return pw.TableRow(
-                  decoration: pw.BoxDecoration(color: isAlt ? headerBg : PdfColors.white),
+                  decoration: isAlt ? const pw.BoxDecoration(color: headerBg) : const pw.BoxDecoration(),
                   children: [
                     pw.Padding(
                       padding: const pw.EdgeInsets.symmetric(vertical: 2.5),
