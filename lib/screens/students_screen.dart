@@ -1,8 +1,9 @@
 import 'dart:convert' show utf8;
+import 'dart:io';
+import 'dart:math' as math;
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
-import 'dart:io';
 
 import '../data/database_helper.dart';
 import '../models/app_settings.dart';
@@ -95,29 +96,11 @@ class _StudentsScreenState extends State<StudentsScreen> {
                 BoxShadow(color: Colors.black12, blurRadius: 4, offset: Offset(0, 2)),
               ],
             ),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        "Gestion des Candidats — ${widget.schoolClass.name}",
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: primaryColor,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        "Effectif : ${widget.students.length} inscrits • Importez un fichier CSV ou ajoutez manuellement",
-                        style: const TextStyle(color: AppColors.textSecondary, fontSize: 12),
-                      ),
-                    ],
-                  ),
-                ),
-                // Menu déroulant Modèle (Excel prioritaire / CSV)
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final isCompact = constraints.maxWidth < 1250;
+                final actionButtons = <Widget>[
+                  // Menu déroulant Modèle (Excel prioritaire / CSV)
                 PopupMenuButton<String>(
                   tooltip: "Télécharger un modèle de fichier",
                   onSelected: (val) {
@@ -252,7 +235,6 @@ class _StudentsScreenState extends State<StudentsScreen> {
                     ),
                   ),
                 ),
-                const SizedBox(width: 10),
                 // Bouton Importer depuis une autre Année
                 OutlinedButton.icon(
                   onPressed: widget.isReadOnly ? null : () => _showImportFromPreviousYearDialog(context),
@@ -265,7 +247,6 @@ class _StudentsScreenState extends State<StudentsScreen> {
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                   ),
                 ),
-                const SizedBox(width: 10),
                 // Bouton Numéroter Automatiquement la Classe
                 OutlinedButton.icon(
                   onPressed: widget.isReadOnly ? null : () => _showAutoRenumberDialog(context),
@@ -278,21 +259,72 @@ class _StudentsScreenState extends State<StudentsScreen> {
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                   ),
                 ),
-                const SizedBox(width: 10),
-                // Bouton Nouveau Candidat
-                ElevatedButton.icon(
-                  onPressed: widget.isReadOnly ? null : () => _showAddEditStudentDialog(context),
-                  icon: const Icon(Icons.person_add_rounded, size: 18),
-                  label: const Text("Nouveau Candidat"),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: primaryColor,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                    elevation: 0,
+                  // Bouton Nouveau Candidat
+                  ElevatedButton.icon(
+                    onPressed: widget.isReadOnly ? null : () => _showAddEditStudentDialog(context),
+                    icon: const Icon(Icons.person_add_rounded, size: 18),
+                    label: const Text("Nouveau Candidat"),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: primaryColor,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                      elevation: 0,
+                    ),
                   ),
-                ),
-              ],
+                ];
+
+                final titleWidget = Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      "Gestion des Candidats — ${widget.schoolClass.name}",
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: primaryColor,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      "Effectif : ${widget.students.length} inscrits • Importez un fichier Excel/CSV ou ajoutez manuellement",
+                      style: const TextStyle(color: AppColors.textSecondary, fontSize: 12),
+                    ),
+                  ],
+                );
+
+                if (isCompact) {
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      titleWidget,
+                      const SizedBox(height: 14),
+                      Wrap(
+                        spacing: 10,
+                        runSpacing: 10,
+                        crossAxisAlignment: WrapCrossAlignment.center,
+                        children: actionButtons,
+                      ),
+                    ],
+                  );
+                }
+
+                return Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    Expanded(child: titleWidget),
+                    const SizedBox(width: 16),
+                    Wrap(
+                      spacing: 10,
+                      runSpacing: 10,
+                      alignment: WrapAlignment.end,
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      children: actionButtons,
+                    ),
+                  ],
+                );
+              },
             ),
           ),
 
@@ -347,18 +379,28 @@ class _StudentsScreenState extends State<StudentsScreen> {
                   BoxShadow(color: Colors.black12, blurRadius: 4, offset: Offset(0, 2)),
                 ],
               ),
-              child: Column(
-                children: [
-                  // En-tête
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                    decoration: BoxDecoration(
-                      color: primaryColor,
-                      borderRadius: const BorderRadius.only(
-                        topLeft: Radius.circular(11),
-                        topRight: Radius.circular(11),
-                      ),
-                    ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(11),
+                child: LayoutBuilder(
+                  builder: (context, constraints) {
+                    const double minTableWidth = 860;
+                    final double tableWidth = math.max(constraints.maxWidth, minTableWidth);
+
+                    return Scrollbar(
+                      thumbVisibility: true,
+                      child: SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        child: SizedBox(
+                          width: tableWidth,
+                          height: constraints.maxHeight,
+                          child: Column(
+                            children: [
+                              // En-tête
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                                decoration: BoxDecoration(
+                                  color: primaryColor,
+                                ),
                     child: const Row(
                       children: [
                         SizedBox(width: 80, child: Text("N° TABLE", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12))),
@@ -466,7 +508,13 @@ class _StudentsScreenState extends State<StudentsScreen> {
                             },
                           ),
                   ),
-                ],
+                            ],
+                          ),
+                        ),
+                      ),
+                    );
+                  },
+                ),
               ),
             ),
           ),

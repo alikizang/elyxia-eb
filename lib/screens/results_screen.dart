@@ -79,73 +79,105 @@ class _ResultsScreenState extends State<ResultsScreen> {
                 BoxShadow(color: Colors.black12, blurRadius: 4, offset: Offset(0, 2)),
               ],
             ),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Column(
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final isCompact = constraints.maxWidth < 1000;
+                final actionButtons = <Widget>[
+                  // Bouton Exporter CSV
+                  OutlinedButton.icon(
+                    onPressed: () => _exportCsv(context),
+                    icon: const Icon(Icons.file_download_outlined, size: 18),
+                    label: const Text("Exporter CSV"),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: primaryColor,
+                      side: BorderSide(color: primaryColor),
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                    ),
+                  ),
+                  // Bouton PV A4
+                  ElevatedButton.icon(
+                    onPressed: widget.onPreviewPvA4,
+                    icon: const Icon(Icons.table_chart_rounded, size: 18),
+                    label: const Text("Procès-Verbal (PV A4)"),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Color.lerp(primaryColor, Colors.black, 0.12) ?? primaryColor,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        side: BorderSide(color: Colors.white.withValues(alpha: 0.2)),
+                      ),
+                      elevation: 0,
+                    ),
+                  ),
+                  // Bouton Relevés A5 par lot
+                  ElevatedButton.icon(
+                    onPressed: widget.onPreviewAllStudentsA5,
+                    icon: const Icon(Icons.print_rounded, size: 18),
+                    label: const Text("Imprimer Tous les Relevés A5"),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: accentColor,
+                      foregroundColor: accentTextColor,
+                      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+                      textStyle: const TextStyle(fontWeight: FontWeight.bold),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                      elevation: 0,
+                    ),
+                  ),
+                ];
+
+                final titleWidget = Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      "Résultats & Classement — ${widget.schoolClass.name} (${widget.schoolClass.examType})",
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: primaryColor,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      "${widget.exam.title} • Délibération officielle de la session de ${widget.exam.sessionDate}",
+                      style: const TextStyle(color: AppColors.textSecondary, fontSize: 12),
+                    ),
+                  ],
+                );
+
+                if (isCompact) {
+                  return Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        "Résultats & Classement — ${widget.schoolClass.name} (${widget.schoolClass.examType})",
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: primaryColor,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        "${widget.exam.title} • Délibération officielle de la session de ${widget.exam.sessionDate}",
-                        style: const TextStyle(color: AppColors.textSecondary, fontSize: 12),
+                      titleWidget,
+                      const SizedBox(height: 14),
+                      Wrap(
+                        spacing: 12,
+                        runSpacing: 10,
+                        crossAxisAlignment: WrapCrossAlignment.center,
+                        children: actionButtons,
                       ),
                     ],
-                  ),
-                ),
-                // Bouton Exporter CSV
-                OutlinedButton.icon(
-                  onPressed: () => _exportCsv(context),
-                  icon: const Icon(Icons.file_download_outlined, size: 18),
-                  label: const Text("Exporter CSV"),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: primaryColor,
-                    side: BorderSide(color: primaryColor),
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                // Bouton PV A4
-                ElevatedButton.icon(
-                  onPressed: widget.onPreviewPvA4,
-                  icon: const Icon(Icons.table_chart_rounded, size: 18),
-                  label: const Text("Procès-Verbal (PV A4)"),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Color.lerp(primaryColor, Colors.black, 0.12) ?? primaryColor,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                      side: BorderSide(color: Colors.white.withValues(alpha: 0.2)),
+                  );
+                }
+
+                return Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    Expanded(child: titleWidget),
+                    const SizedBox(width: 16),
+                    Wrap(
+                      spacing: 12,
+                      runSpacing: 10,
+                      alignment: WrapAlignment.end,
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      children: actionButtons,
                     ),
-                    elevation: 0,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                // Bouton Relevés A5 par lot
-                ElevatedButton.icon(
-                  onPressed: widget.onPreviewAllStudentsA5,
-                  icon: const Icon(Icons.print_rounded, size: 18),
-                  label: const Text("Imprimer Tous les Relevés A5"),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: accentColor,
-                    foregroundColor: accentTextColor,
-                    padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
-                    textStyle: const TextStyle(fontWeight: FontWeight.bold),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                    elevation: 0,
-                  ),
-                ),
-              ],
+                  ],
+                );
+              },
             ),
           ),
 
@@ -159,30 +191,26 @@ class _ResultsScreenState extends State<ResultsScreen> {
               borderRadius: BorderRadius.circular(8),
               border: Border.all(color: AppColors.border),
             ),
-            child: Row(
-              children: [
-                // Champ de recherche
-                Expanded(
-                  flex: 3,
-                  child: TextField(
-                    decoration: InputDecoration(
-                      hintText: "Rechercher par nom ou numéro de table...",
-                      prefixIcon: const Icon(Icons.search, size: 20, color: AppColors.textMuted),
-                      isDense: true,
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                      fillColor: Colors.white,
-                      filled: true,
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(6),
-                        borderSide: const BorderSide(color: AppColors.border),
-                      ),
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final isNarrow = constraints.maxWidth < 800;
+                final searchField = TextField(
+                  decoration: InputDecoration(
+                    hintText: "Rechercher par nom ou numéro de table...",
+                    prefixIcon: const Icon(Icons.search, size: 20, color: AppColors.textMuted),
+                    isDense: true,
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    fillColor: Colors.white,
+                    filled: true,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(6),
+                      borderSide: const BorderSide(color: AppColors.border),
                     ),
-                    onChanged: (val) => setState(() => _searchQuery = val),
                   ),
-                ),
-                const SizedBox(width: 16),
-                // Filtre Admis / Ajourné
-                SegmentedButton<String>(
+                  onChanged: (val) => setState(() => _searchQuery = val),
+                );
+
+                final filterSegment = SegmentedButton<String>(
                   segments: const [
                     ButtonSegment(value: 'ALL', label: Text("Tous")),
                     ButtonSegment(value: 'ADMIS', label: Text("Admis")),
@@ -192,17 +220,47 @@ class _ResultsScreenState extends State<ResultsScreen> {
                   onSelectionChanged: (val) {
                     setState(() => _filterDecision = val.first);
                   },
-                ),
-                const Spacer(),
-                Text(
+                );
+
+                final statsText = Text(
                   "Taux de Réussite : ${stats.successRate} % (${stats.admittedCount}/${stats.totalStudents})",
                   style: TextStyle(
                     fontWeight: FontWeight.bold,
                     fontSize: 13,
                     color: stats.successRate >= 50 ? AppColors.success : AppColors.error,
                   ),
-                ),
-              ],
+                );
+
+                if (isNarrow) {
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      searchField,
+                      const SizedBox(height: 10),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          filterSegment,
+                          statsText,
+                        ],
+                      ),
+                    ],
+                  );
+                }
+
+                return Row(
+                  children: [
+                    Expanded(
+                      flex: 3,
+                      child: searchField,
+                    ),
+                    const SizedBox(width: 16),
+                    filterSegment,
+                    const Spacer(),
+                    statsText,
+                  ],
+                );
+              },
             ),
           ),
 

@@ -66,80 +66,83 @@ class DashboardScreen extends StatelessWidget {
                 ),
               ],
             ),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final isCompact = constraints.maxWidth < 860;
+
+                final titleColumn = Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 6,
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: accentColor.withValues(alpha: 0.25),
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(color: accentColor.withValues(alpha: 0.6)),
+                          ),
+                          child: Text(
+                            "SESSION OFFICIELLE — ${exam?.title.toUpperCase() ?? 'EXAMEN BLANC'}",
+                            style: TextStyle(
+                              color: isAccentLight ? Colors.white : accentColor,
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
+                              letterSpacing: 0.5,
+                            ),
+                          ),
+                        ),
+                        if (selectedYear?.isClosed ?? false) ...[
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                             decoration: BoxDecoration(
-                              color: accentColor.withValues(alpha: 0.25),
+                              color: Colors.red.withValues(alpha: 0.25),
                               borderRadius: BorderRadius.circular(20),
-                              border: Border.all(color: accentColor.withValues(alpha: 0.6)),
+                              border: Border.all(color: Colors.redAccent.withValues(alpha: 0.6)),
                             ),
-                            child: Text(
-                              "SESSION OFFICIELLE — ${exam?.title.toUpperCase() ?? 'EXAMEN BLANC'}",
-                              style: TextStyle(
-                                color: isAccentLight ? Colors.white : accentColor,
-                                fontSize: 11,
-                                fontWeight: FontWeight.bold,
-                                letterSpacing: 0.5,
-                              ),
+                            child: const Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(Icons.lock_rounded, size: 12, color: Colors.white),
+                                SizedBox(width: 5),
+                                Text(
+                                  "ANNÉE CLÔTURÉE (ARCHIVÉE)",
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 10.5,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
-                          if (selectedYear?.isClosed ?? false) ...[
-                            const SizedBox(width: 10),
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                              decoration: BoxDecoration(
-                                color: Colors.red.withValues(alpha: 0.25),
-                                borderRadius: BorderRadius.circular(20),
-                                border: Border.all(color: Colors.redAccent.withValues(alpha: 0.6)),
-                              ),
-                              child: const Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Icon(Icons.lock_rounded, size: 12, color: Colors.white),
-                                  SizedBox(width: 5),
-                                  Text(
-                                    "ANNÉE CLÔTURÉE (ARCHIVÉE)",
-                                    style: TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 10.5,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
                         ],
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      settings?.schoolName ?? "COMPLEXE SCOLAIRE LES VICTORIEUX",
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
                       ),
-                      const SizedBox(height: 12),
-                      Text(
-                        settings?.schoolName ?? "COMPLEXE SCOLAIRE LES VICTORIEUX",
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 22,
-                          fontWeight: FontWeight.bold,
-                        ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      "Classe active : ${schoolClass?.name ?? '-'} (${schoolClass?.examType ?? '-'}) • Session : ${exam?.sessionDate ?? '-'} • Année Scolaire : ${selectedYear?.name ?? exam?.academicYear ?? settings?.academicYear ?? '-'}",
+                      style: const TextStyle(
+                        color: Colors.white70,
+                        fontSize: 13,
                       ),
-                      const SizedBox(height: 6),
-                      Text(
-                        "Classe active : ${schoolClass?.name ?? '-'} (${schoolClass?.examType ?? '-'}) • Session : ${exam?.sessionDate ?? '-'} • Année Scolaire : ${selectedYear?.name ?? exam?.academicYear ?? settings?.academicYear ?? '-'}",
-                        style: const TextStyle(
-                          color: Colors.white70,
-                          fontSize: 13,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                ElevatedButton.icon(
+                    ),
+                  ],
+                );
+
+                final printBtn = ElevatedButton.icon(
                   onPressed: onGoToPrintA5,
                   icon: const Icon(Icons.print_rounded, size: 20),
                   label: const Text("Imprimer Relevés A5"),
@@ -151,56 +154,98 @@ class DashboardScreen extends StatelessWidget {
                     textStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                   ),
-                ),
-              ],
+                );
+
+                if (isCompact) {
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      titleColumn,
+                      const SizedBox(height: 16),
+                      printBtn,
+                    ],
+                  );
+                }
+
+                return Row(
+                  children: [
+                    Expanded(child: titleColumn),
+                    const SizedBox(width: 16),
+                    printBtn,
+                  ],
+                );
+              },
             ),
           ),
 
           const SizedBox(height: 24),
 
           // 4 Cartes de Statistiques Rapides
-          Row(
-            children: [
-              Expanded(
-                child: _buildStatCard(
-                  title: "Effectif Candidats",
-                  value: "${stats.totalStudents}",
-                  subtitle: "Inscrits dans la classe",
-                  icon: Icons.groups_rounded,
-                  color: primaryColor,
-                ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: _buildStatCard(
-                  title: "Taux de Réussite",
-                  value: "${stats.successRate} %",
-                  subtitle: "${stats.admittedCount} Admis • ${stats.failedCount} Ajournés",
-                  icon: Icons.check_circle_outline_rounded,
-                  color: stats.successRate >= 50 ? AppColors.success : AppColors.error,
-                ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: _buildStatCard(
-                  title: "Moyenne Générale",
-                  value: "${stats.classAverage.toStringAsFixed(2)} /20",
-                  subtitle: "Moyenne de la promotion",
-                  icon: Icons.analytics_outlined,
-                  color: AppColors.info,
-                ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: _buildStatCard(
-                  title: "Extrêmes (Max / Min)",
-                  value: stats.highestAverage.toStringAsFixed(2),
-                  subtitle: "Min: ${stats.lowestAverage.toStringAsFixed(2)} /20",
-                  icon: Icons.swap_vert_rounded,
-                  color: AppColors.warning,
-                ),
-              ),
-            ],
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final card1 = _buildStatCard(
+                title: "Effectif Candidats",
+                value: "${stats.totalStudents}",
+                subtitle: "Inscrits dans la classe",
+                icon: Icons.groups_rounded,
+                color: primaryColor,
+              );
+              final card2 = _buildStatCard(
+                title: "Taux de Réussite",
+                value: "${stats.successRate} %",
+                subtitle: "${stats.admittedCount} Admis • ${stats.failedCount} Ajournés",
+                icon: Icons.check_circle_outline_rounded,
+                color: stats.successRate >= 50 ? AppColors.success : AppColors.error,
+              );
+              final card3 = _buildStatCard(
+                title: "Moyenne Générale",
+                value: "${stats.classAverage.toStringAsFixed(2)} /20",
+                subtitle: "Moyenne de la promotion",
+                icon: Icons.analytics_outlined,
+                color: AppColors.info,
+              );
+              final card4 = _buildStatCard(
+                title: "Extrêmes (Max / Min)",
+                value: stats.highestAverage.toStringAsFixed(2),
+                subtitle: "Min: ${stats.lowestAverage.toStringAsFixed(2)} /20",
+                icon: Icons.swap_vert_rounded,
+                color: AppColors.warning,
+              );
+
+              if (constraints.maxWidth < 900) {
+                return Column(
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(child: card1),
+                        const SizedBox(width: 12),
+                        Expanded(child: card2),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        Expanded(child: card3),
+                        const SizedBox(width: 12),
+                        Expanded(child: card4),
+                      ],
+                    ),
+                  ],
+                );
+              }
+
+              return Row(
+                children: [
+                  Expanded(child: card1),
+                  const SizedBox(width: 16),
+                  Expanded(child: card2),
+                  const SizedBox(width: 16),
+                  Expanded(child: card3),
+                  const SizedBox(width: 16),
+                  Expanded(child: card4),
+                ],
+              );
+            },
           ),
 
           const SizedBox(height: 28),
@@ -215,38 +260,52 @@ class DashboardScreen extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(
-                child: _buildActionCard(
-                  title: "Saisie Rapide des Notes",
-                  description: "Grille de saisie ergonomique par matière ou par candidat avec validation clavier.",
-                  icon: Icons.edit_note_rounded,
-                  color: primaryColor,
-                  onTap: onGoToMarks,
-                ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: _buildActionCard(
-                  title: "Relevés de Notes (Format A5)",
-                  description: "Visualisez individuellement ou par lot toute la classe et imprimez en 1 clic.",
-                  icon: Icons.description_outlined,
-                  color: AppColors.accent,
-                  onTap: onGoToPrintA5,
-                ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: _buildActionCard(
-                  title: "Procès-Verbal (PV A4)",
-                  description: "Fiche récapitulative officielle de délibération grand format paysage pour affichage.",
-                  icon: Icons.table_chart_outlined,
-                  color: AppColors.info,
-                  onTap: onGoToPrintPv,
-                ),
-              ),
-            ],
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final action1 = _buildActionCard(
+                title: "Saisie Rapide des Notes",
+                description: "Grille de saisie ergonomique par matière ou par candidat avec validation clavier.",
+                icon: Icons.edit_note_rounded,
+                color: primaryColor,
+                onTap: onGoToMarks,
+              );
+              final action2 = _buildActionCard(
+                title: "Relevés de Notes (Format A5)",
+                description: "Visualisez individuellement ou par lot toute la classe et imprimez en 1 clic.",
+                icon: Icons.description_outlined,
+                color: AppColors.accent,
+                onTap: onGoToPrintA5,
+              );
+              final action3 = _buildActionCard(
+                title: "Procès-Verbal (PV A4)",
+                description: "Fiche récapitulative officielle de délibération grand format paysage pour affichage.",
+                icon: Icons.table_chart_outlined,
+                color: AppColors.info,
+                onTap: onGoToPrintPv,
+              );
+
+              if (constraints.maxWidth < 800) {
+                return Column(
+                  children: [
+                    action1,
+                    const SizedBox(height: 12),
+                    action2,
+                    const SizedBox(height: 12),
+                    action3,
+                  ],
+                );
+              }
+
+              return Row(
+                children: [
+                  Expanded(child: action1),
+                  const SizedBox(width: 16),
+                  Expanded(child: action2),
+                  const SizedBox(width: 16),
+                  Expanded(child: action3),
+                ],
+              );
+            },
           ),
 
           const SizedBox(height: 28),

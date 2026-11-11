@@ -1,5 +1,6 @@
 import 'dart:convert' show utf8;
 import 'dart:io';
+import 'dart:math' as math;
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
@@ -384,219 +385,250 @@ class _MarksEntryScreenState extends State<MarksEntryScreen> {
                 BoxShadow(color: Colors.black12, blurRadius: 4, offset: Offset(0, 2)),
               ],
             ),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        "Saisie des Notes — ${widget.schoolClass.name}",
-                        style: TextStyle(
-                          fontSize: 18,
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final isCompact = constraints.maxWidth < 1180;
+                final actionWidgets = <Widget>[
+                  // Sélecteur de matière
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: AppColors.surfaceSubtle,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: AppColors.border),
+                    ),
+                    child: DropdownButtonHideUnderline(
+                      child: DropdownButton<Subject>(
+                        value: _selectedSubject,
+                        icon: Icon(Icons.arrow_drop_down, color: primaryColor),
+                        style: const TextStyle(
+                          color: AppColors.textPrimary,
+                          fontSize: 13,
                           fontWeight: FontWeight.bold,
-                          color: primaryColor,
+                        ),
+                        items: widget.subjects.map((sub) {
+                          return DropdownMenuItem<Subject>(
+                            value: sub,
+                            child: Text(
+                              "${sub.name} (Coef: ${sub.coefficient.toInt()})",
+                            ),
+                          );
+                        }).toList(),
+                        onChanged: (newSub) {
+                          if (newSub != null) {
+                            setState(() => _selectedSubject = newSub);
+                            _loadExistingMarks();
+                          }
+                        },
+                      ),
+                    ),
+                  ),
+                  // Menu Modèle de Saisie (Excel / CSV)
+                  PopupMenuButton<String>(
+                    tooltip: "Télécharger la fiche de notes pré-remplie",
+                    onSelected: (val) {
+                      if (val == 'xlsx') {
+                        _downloadMarksTemplate(isExcel: true);
+                      } else if (val == 'csv') {
+                        _downloadMarksTemplate(isExcel: false);
+                      }
+                    },
+                    itemBuilder: (ctx) => [
+                      PopupMenuItem(
+                        value: 'xlsx',
+                        child: Row(
+                          children: [
+                            Icon(Icons.table_chart_rounded, size: 18, color: Colors.green.shade700),
+                            const SizedBox(width: 10),
+                            const Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text("Modèle Excel (.xlsx)", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                                Text("Fiche pré-remplie avec les élèves de la classe", style: TextStyle(fontSize: 11, color: AppColors.textSecondary)),
+                              ],
+                            ),
+                          ],
                         ),
                       ),
-                      const SizedBox(height: 4),
-                      Text(
-                        "${widget.exam.title} • Navigation clavier : Appuyez sur [Entrée] pour passer au candidat suivant",
-                        style: const TextStyle(color: AppColors.textSecondary, fontSize: 12),
+                      const PopupMenuDivider(),
+                      const PopupMenuItem(
+                        value: 'csv',
+                        child: Row(
+                          children: [
+                            Icon(Icons.description_outlined, size: 18, color: AppColors.textSecondary),
+                            SizedBox(width: 10),
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text("Modèle Texte CSV (.csv)", style: TextStyle(fontSize: 13)),
+                                Text("Format universel texte délimité", style: TextStyle(fontSize: 11, color: AppColors.textSecondary)),
+                              ],
+                            ),
+                          ],
+                        ),
                       ),
                     ],
+                    child: OutlinedButton.icon(
+                      onPressed: null,
+                      icon: const Icon(Icons.file_download_outlined, size: 18),
+                      label: const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text("Fiche de Notes"),
+                          SizedBox(width: 4),
+                          Icon(Icons.arrow_drop_down, size: 16),
+                        ],
+                      ),
+                      style: OutlinedButton.styleFrom(
+                        disabledForegroundColor: AppColors.textSecondary,
+                        foregroundColor: AppColors.textSecondary,
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                      ),
+                    ),
                   ),
-                ),
-                // Sélecteur de matière
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: AppColors.surfaceSubtle,
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: AppColors.border),
+                  // Menu Importer les Notes (Excel / CSV)
+                  PopupMenuButton<String>(
+                    tooltip: "Importer les notes depuis un fichier Excel ou CSV",
+                    enabled: !widget.isReadOnly,
+                    onSelected: (val) {
+                      if (val == 'xlsx') {
+                        _importMarks(isExcel: true);
+                      } else if (val == 'csv') {
+                        _importMarks(isExcel: false);
+                      }
+                    },
+                    itemBuilder: (ctx) => [
+                      PopupMenuItem(
+                        value: 'xlsx',
+                        child: Row(
+                          children: [
+                            Icon(Icons.table_chart_rounded, size: 18, color: Colors.green.shade700),
+                            const SizedBox(width: 10),
+                            const Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text("Importer fichier Excel (.xlsx)", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                                Text("Remplissage automatique par N° de Table", style: TextStyle(fontSize: 11, color: AppColors.textSecondary)),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                      const PopupMenuDivider(),
+                      const PopupMenuItem(
+                        value: 'csv',
+                        child: Row(
+                          children: [
+                            Icon(Icons.upload_file_rounded, size: 18, color: AppColors.textSecondary),
+                            SizedBox(width: 10),
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text("Importer fichier CSV (.csv)", style: TextStyle(fontSize: 13)),
+                                Text("Import délimité par virgule ou point-virgule", style: TextStyle(fontSize: 11, color: AppColors.textSecondary)),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                    child: OutlinedButton.icon(
+                      onPressed: null,
+                      icon: const Icon(Icons.upload_file_rounded, size: 18),
+                      label: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text("Importer Notes"),
+                          const SizedBox(width: 4),
+                          const Icon(Icons.arrow_drop_down, size: 16),
+                        ],
+                      ),
+                      style: OutlinedButton.styleFrom(
+                        disabledForegroundColor: widget.isReadOnly ? AppColors.textMuted : primaryColor,
+                        foregroundColor: primaryColor,
+                        side: BorderSide(color: widget.isReadOnly ? AppColors.border : primaryColor),
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                      ),
+                    ),
                   ),
-                  child: DropdownButtonHideUnderline(
-                    child: DropdownButton<Subject>(
-                      value: _selectedSubject,
-                      icon: Icon(Icons.arrow_drop_down, color: primaryColor),
-                      style: const TextStyle(
-                        color: AppColors.textPrimary,
-                        fontSize: 13,
+                  // Bouton Enregistrer
+                  ElevatedButton.icon(
+                    onPressed: (widget.isReadOnly || _isSaving) ? null : _saveAllMarks,
+                    icon: _isSaving
+                        ? const SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                          )
+                        : const Icon(Icons.save_rounded, size: 18),
+                    label: Text(_isSaving ? "Enregistrement..." : "Enregistrer les Notes"),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: primaryColor,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                      elevation: 0,
+                    ),
+                  ),
+                ];
+
+                final titleWidget = Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      "Saisie des Notes — ${widget.schoolClass.name}",
+                      style: TextStyle(
+                        fontSize: 18,
                         fontWeight: FontWeight.bold,
-                      ),
-                      items: widget.subjects.map((sub) {
-                        return DropdownMenuItem<Subject>(
-                          value: sub,
-                          child: Text(
-                            "${sub.name} (Coef: ${sub.coefficient.toInt()})",
-                          ),
-                        );
-                      }).toList(),
-                      onChanged: (newSub) {
-                        if (newSub != null) {
-                          setState(() => _selectedSubject = newSub);
-                          _loadExistingMarks();
-                        }
-                      },
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                // Menu Modèle de Saisie (Excel / CSV)
-                PopupMenuButton<String>(
-                  tooltip: "Télécharger la fiche de notes pré-remplie",
-                  onSelected: (val) {
-                    if (val == 'xlsx') {
-                      _downloadMarksTemplate(isExcel: true);
-                    } else if (val == 'csv') {
-                      _downloadMarksTemplate(isExcel: false);
-                    }
-                  },
-                  itemBuilder: (ctx) => [
-                    PopupMenuItem(
-                      value: 'xlsx',
-                      child: Row(
-                        children: [
-                          Icon(Icons.table_chart_rounded, size: 18, color: Colors.green.shade700),
-                          const SizedBox(width: 10),
-                          const Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Text("Modèle Excel (.xlsx)", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-                              Text("Fiche pré-remplie avec les élèves de la classe", style: TextStyle(fontSize: 11, color: AppColors.textSecondary)),
-                            ],
-                          ),
-                        ],
+                        color: primaryColor,
                       ),
                     ),
-                    const PopupMenuDivider(),
-                    const PopupMenuItem(
-                      value: 'csv',
-                      child: Row(
-                        children: [
-                          Icon(Icons.description_outlined, size: 18, color: AppColors.textSecondary),
-                          SizedBox(width: 10),
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Text("Modèle Texte CSV (.csv)", style: TextStyle(fontSize: 13)),
-                              Text("Format universel texte délimité", style: TextStyle(fontSize: 11, color: AppColors.textSecondary)),
-                            ],
-                          ),
-                        ],
-                      ),
+                    const SizedBox(height: 4),
+                    Text(
+                      "${widget.exam.title} • Navigation clavier : Appuyez sur [Entrée] pour passer au candidat suivant",
+                      style: const TextStyle(color: AppColors.textSecondary, fontSize: 12),
                     ),
                   ],
-                  child: OutlinedButton.icon(
-                    onPressed: null,
-                    icon: const Icon(Icons.file_download_outlined, size: 18),
-                    label: const Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text("Fiche de Notes"),
-                        SizedBox(width: 4),
-                        Icon(Icons.arrow_drop_down, size: 16),
-                      ],
-                    ),
-                    style: OutlinedButton.styleFrom(
-                      disabledForegroundColor: AppColors.textSecondary,
-                      foregroundColor: AppColors.textSecondary,
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 10),
-                // Menu Importer les Notes (Excel / CSV)
-                PopupMenuButton<String>(
-                  tooltip: "Importer les notes depuis un fichier Excel ou CSV",
-                  enabled: !widget.isReadOnly,
-                  onSelected: (val) {
-                    if (val == 'xlsx') {
-                      _importMarks(isExcel: true);
-                    } else if (val == 'csv') {
-                      _importMarks(isExcel: false);
-                    }
-                  },
-                  itemBuilder: (ctx) => [
-                    PopupMenuItem(
-                      value: 'xlsx',
-                      child: Row(
-                        children: [
-                          Icon(Icons.table_chart_rounded, size: 18, color: Colors.green.shade700),
-                          const SizedBox(width: 10),
-                          const Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Text("Importer fichier Excel (.xlsx)", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-                              Text("Remplissage automatique par N° de Table", style: TextStyle(fontSize: 11, color: AppColors.textSecondary)),
-                            ],
-                          ),
-                        ],
+                );
+
+                if (isCompact) {
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      titleWidget,
+                      const SizedBox(height: 14),
+                      Wrap(
+                        spacing: 10,
+                        runSpacing: 10,
+                        crossAxisAlignment: WrapCrossAlignment.center,
+                        children: actionWidgets,
                       ),
-                    ),
-                    const PopupMenuDivider(),
-                    const PopupMenuItem(
-                      value: 'csv',
-                      child: Row(
-                        children: [
-                          Icon(Icons.upload_file_rounded, size: 18, color: AppColors.textSecondary),
-                          SizedBox(width: 10),
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Text("Importer fichier CSV (.csv)", style: TextStyle(fontSize: 13)),
-                              Text("Import délimité par virgule ou point-virgule", style: TextStyle(fontSize: 11, color: AppColors.textSecondary)),
-                            ],
-                          ),
-                        ],
-                      ),
+                    ],
+                  );
+                }
+
+                return Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    Expanded(child: titleWidget),
+                    const SizedBox(width: 16),
+                    Wrap(
+                      spacing: 10,
+                      runSpacing: 10,
+                      alignment: WrapAlignment.end,
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      children: actionWidgets,
                     ),
                   ],
-                  child: OutlinedButton.icon(
-                    onPressed: null,
-                    icon: const Icon(Icons.upload_file_rounded, size: 18),
-                    label: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text("Importer Notes"),
-                        const SizedBox(width: 4),
-                        const Icon(Icons.arrow_drop_down, size: 16),
-                      ],
-                    ),
-                    style: OutlinedButton.styleFrom(
-                      disabledForegroundColor: widget.isReadOnly ? AppColors.textMuted : primaryColor,
-                      foregroundColor: primaryColor,
-                      side: BorderSide(color: widget.isReadOnly ? AppColors.border : primaryColor),
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 16),
-                // Bouton Enregistrer
-                ElevatedButton.icon(
-                  onPressed: (widget.isReadOnly || _isSaving) ? null : _saveAllMarks,
-                  icon: _isSaving
-                      ? const SizedBox(
-                          width: 16,
-                          height: 16,
-                          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                        )
-                      : const Icon(Icons.save_rounded, size: 18),
-                  label: Text(_isSaving ? "Enregistrement..." : "Enregistrer les Notes"),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: primaryColor,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                    elevation: 0,
-                  ),
-                ),
-              ],
+                );
+              },
             ),
           ),
 
@@ -652,18 +684,28 @@ class _MarksEntryScreenState extends State<MarksEntryScreen> {
                         BoxShadow(color: Colors.black12, blurRadius: 4, offset: Offset(0, 2)),
                       ],
                     ),
-                    child: Column(
-                      children: [
-                        // En-tête du tableau
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                          decoration: BoxDecoration(
-                            color: primaryColor,
-                            borderRadius: const BorderRadius.only(
-                              topLeft: Radius.circular(11),
-                              topRight: Radius.circular(11),
-                            ),
-                          ),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(11),
+                      child: LayoutBuilder(
+                        builder: (context, constraints) {
+                          const double minTableWidth = 860;
+                          final double tableWidth = math.max(constraints.maxWidth, minTableWidth);
+
+                          return Scrollbar(
+                            thumbVisibility: true,
+                            child: SingleChildScrollView(
+                              scrollDirection: Axis.horizontal,
+                              child: SizedBox(
+                                width: tableWidth,
+                                height: constraints.maxHeight,
+                                child: Column(
+                                  children: [
+                                    // En-tête du tableau
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                                      decoration: BoxDecoration(
+                                        color: primaryColor,
+                                      ),
                           child: const Row(
                             children: [
                               SizedBox(width: 60, child: Text("N° TABLE", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12))),
@@ -833,8 +875,14 @@ class _MarksEntryScreenState extends State<MarksEntryScreen> {
                       ],
                     ),
                   ),
+                ),
+              );
+            },
           ),
-        ],
+        ),
+      ),
+    ),
+  ],
       ),
     );
   }

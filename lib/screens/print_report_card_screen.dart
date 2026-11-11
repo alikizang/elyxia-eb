@@ -105,34 +105,29 @@ class _PrintReportCardScreenState extends State<PrintReportCardScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 // Ligne 1 : Titre à gauche + Contrôles de Zoom à droite
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            "Impression des Relevés de Notes (Format A5)",
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                              color: primaryColor,
-                            ),
+                LayoutBuilder(
+                  builder: (context, constraints) {
+                    final isCompact = constraints.maxWidth < 820;
+                    final titleCol = Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          "Impression des Relevés de Notes (Format A5)",
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: primaryColor,
                           ),
-                          const SizedBox(height: 4),
-                          Text(
-                            "${widget.schoolClass.name} • ${widget.exam.title} • Format standard officiel A5 Portrait (148 × 210 mm)",
-                            style: const TextStyle(color: AppColors.textSecondary, fontSize: 12),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(width: 16),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          "${widget.schoolClass.name} • ${widget.exam.title} • Format standard officiel A5 Portrait (148 × 210 mm)",
+                          style: const TextStyle(color: AppColors.textSecondary, fontSize: 12),
+                        ),
+                      ],
+                    );
 
-                    // Barre de Zoom interactive
-                    Container(
+                    final zoomBar = Container(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                       decoration: BoxDecoration(
                         color: AppColors.surfaceSubtle,
@@ -177,8 +172,29 @@ class _PrintReportCardScreenState extends State<PrintReportCardScreen> {
                           ),
                         ],
                       ),
-                    ),
-                  ],
+                    );
+
+                    if (isCompact) {
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          titleCol,
+                          const SizedBox(height: 12),
+                          zoomBar,
+                        ],
+                      );
+                    }
+
+                    return Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        Expanded(child: titleCol),
+                        const SizedBox(width: 16),
+                        zoomBar,
+                      ],
+                    );
+                  },
                 ),
 
                 const SizedBox(height: 14),
@@ -186,10 +202,9 @@ class _PrintReportCardScreenState extends State<PrintReportCardScreen> {
                 const SizedBox(height: 14),
 
                 // Ligne 2 : Sélecteur de Mode (Ensemble vs Unique) + Choix de l'élève
-                Row(
-                  children: [
-                    // Sélecteur Mode
-                    SegmentedButton<bool>(
+                LayoutBuilder(
+                  builder: (context, constraints) {
+                    final modeButton = SegmentedButton<bool>(
                       segments: const [
                         ButtonSegment(
                           value: true,
@@ -206,54 +221,9 @@ class _PrintReportCardScreenState extends State<PrintReportCardScreen> {
                       onSelectionChanged: (val) {
                         setState(() => _isBatchMode = val.first);
                       },
-                    ),
+                    );
 
-                    if (!_isBatchMode) ...[
-                      const SizedBox(width: 16),
-                      // Dropdown occupant tout l'espace disponible sans être tronqué
-                      Expanded(
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
-                          decoration: BoxDecoration(
-                            color: AppColors.surfaceSubtle,
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(color: AppColors.border),
-                          ),
-                          child: DropdownButtonHideUnderline(
-                            child: DropdownButton<StudentResult>(
-                              isExpanded: true,
-                              value: _selectedStudent,
-                              icon: Icon(Icons.arrow_drop_down, color: primaryColor),
-                              items: widget.results.map((r) {
-                                return DropdownMenuItem<StudentResult>(
-                                  value: r,
-                                  child: Text(
-                                    "[N° ${r.student.tableNumber}] ${r.student.fullName}  •  Moyenne : ${r.averageFormatted}/20  •  Rang : ${r.rankFormatted}",
-                                    overflow: TextOverflow.ellipsis,
-                                    style: const TextStyle(
-                                      color: AppColors.textPrimary,
-                                      fontSize: 12.5,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                );
-                              }).toList(),
-                              onChanged: (newR) {
-                                if (newR != null) {
-                                  setState(() => _selectedStudent = newR);
-                                }
-                              },
-                            ),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 16),
-                    ] else ...[
-                      const Spacer(),
-                    ],
-
-                    // Interrupteur Signatures Numérisées
-                    Container(
+                    final signaturesSwitch = Container(
                       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                       decoration: BoxDecoration(
                         color: AppColors.surfaceSubtle,
@@ -274,8 +244,85 @@ class _PrintReportCardScreenState extends State<PrintReportCardScreen> {
                           ),
                         ],
                       ),
-                    ),
-                  ],
+                    );
+
+                    if (_isBatchMode) {
+                      return Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          modeButton,
+                          signaturesSwitch,
+                        ],
+                      );
+                    }
+
+                    final studentDropdown = Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: AppColors.surfaceSubtle,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: AppColors.border),
+                      ),
+                      child: DropdownButtonHideUnderline(
+                        child: DropdownButton<StudentResult>(
+                          isExpanded: true,
+                          value: _selectedStudent,
+                          icon: Icon(Icons.arrow_drop_down, color: primaryColor),
+                          items: widget.results.map((r) {
+                            return DropdownMenuItem<StudentResult>(
+                              value: r,
+                              child: Text(
+                                "[N° ${r.student.tableNumber}] ${r.student.fullName}  •  Moyenne : ${r.averageFormatted}/20  •  Rang : ${r.rankFormatted}",
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  color: AppColors.textPrimary,
+                                  fontSize: 12.5,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            );
+                          }).toList(),
+                          onChanged: (newR) {
+                            if (newR != null) {
+                              setState(() => _selectedStudent = newR);
+                            }
+                          },
+                        ),
+                      ),
+                    );
+
+                    if (constraints.maxWidth < 950) {
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Wrap(
+                            spacing: 12,
+                            runSpacing: 10,
+                            crossAxisAlignment: WrapCrossAlignment.center,
+                            children: [
+                              modeButton,
+                              signaturesSwitch,
+                            ],
+                          ),
+                          const SizedBox(height: 12),
+                          SizedBox(
+                            width: double.infinity,
+                            child: studentDropdown,
+                          ),
+                        ],
+                      );
+                    }
+
+                    return Row(
+                      children: [
+                        modeButton,
+                        const SizedBox(width: 16),
+                        Expanded(child: studentDropdown),
+                        const SizedBox(width: 16),
+                        signaturesSwitch,
+                      ],
+                    );
+                  },
                 ),
               ],
             ),
