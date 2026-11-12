@@ -79,9 +79,8 @@ class _PrintPvScreenState extends State<PrintPvScreen> {
                 BoxShadow(color: Colors.black12, blurRadius: 4, offset: Offset(0, 2)),
               ],
             ),
-            child: LayoutBuilder(
-              builder: (context, constraints) {
-                final isCompact = constraints.maxWidth < 950;
+            child: Builder(
+              builder: (context) {
 
                 final titleCol = Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -181,23 +180,11 @@ class _PrintPvScreenState extends State<PrintPvScreen> {
                   ],
                 );
 
-                if (isCompact) {
-                  return Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      titleCol,
-                      const SizedBox(height: 12),
-                      controls,
-                    ],
-                  );
-                }
-
-                return Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  crossAxisAlignment: CrossAxisAlignment.center,
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Expanded(child: titleCol),
-                    const SizedBox(width: 16),
+                    titleCol,
+                    const SizedBox(height: 12),
                     controls,
                   ],
                 );

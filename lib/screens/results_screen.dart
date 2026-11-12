@@ -80,9 +80,8 @@ class _ResultsScreenState extends State<ResultsScreen> {
                 BoxShadow(color: Colors.black12, blurRadius: 4, offset: Offset(0, 2)),
               ],
             ),
-            child: LayoutBuilder(
-              builder: (context, constraints) {
-                final isCompact = constraints.maxWidth < 1000;
+            child: Builder(
+              builder: (context) {
                 final actionButtons = <Widget>[
                   // Menu Exporter Résultats (Excel prioritaire / CSV)
                   PopupMenuButton<String>(
@@ -202,32 +201,14 @@ class _ResultsScreenState extends State<ResultsScreen> {
                   ],
                 );
 
-                if (isCompact) {
-                  return Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      titleWidget,
-                      const SizedBox(height: 14),
-                      Wrap(
-                        spacing: 12,
-                        runSpacing: 10,
-                        crossAxisAlignment: WrapCrossAlignment.center,
-                        children: actionButtons,
-                      ),
-                    ],
-                  );
-                }
-
-                return Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  crossAxisAlignment: CrossAxisAlignment.center,
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Expanded(child: titleWidget),
-                    const SizedBox(width: 16),
+                    titleWidget,
+                    const SizedBox(height: 14),
                     Wrap(
                       spacing: 12,
                       runSpacing: 10,
-                      alignment: WrapAlignment.end,
                       crossAxisAlignment: WrapCrossAlignment.center,
                       children: actionButtons,
                     ),
