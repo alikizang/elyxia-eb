@@ -1,9 +1,7 @@
 import 'dart:convert' show utf8;
-import 'dart:io';
 import 'dart:math' as math;
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
-import 'package:file_picker/file_picker.dart';
 
 import '../data/database_helper.dart';
 import '../models/app_settings.dart';
@@ -15,6 +13,7 @@ import '../models/subject.dart';
 import '../services/calculation_service.dart';
 import '../services/csv_service.dart';
 import '../services/excel_service.dart';
+import '../services/file_service.dart';
 import '../theme/app_colors.dart';
 
 class MarksEntryScreen extends StatefulWidget {
@@ -198,16 +197,16 @@ class _MarksEntryScreenState extends State<MarksEntryScreen> {
       fileName = "fiche_notes_${_cleanFileName(subjectName)}_${_cleanFileName(className)}.csv";
     }
 
-    final savedUri = await FilePicker.saveFile(
+    final savedPath = await FileService.saveFile(
       dialogTitle: "Enregistrer la fiche de notes",
       fileName: fileName,
       bytes: bytes,
     );
 
-    if (savedUri != null && mounted) {
+    if (savedPath != null && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text("Fiche de notes enregistrée avec succès (${isExcel ? 'Excel' : 'CSV'}) !"),
+          content: Text("Fiche de notes enregistrée avec succès : $savedPath"),
           backgroundColor: AppColors.success,
         ),
       );
@@ -217,26 +216,20 @@ class _MarksEntryScreenState extends State<MarksEntryScreen> {
   Future<void> _importMarks({required bool isExcel}) async {
     if (_selectedSubject == null) return;
 
-    final result = await FilePicker.pickFiles(
-      type: FileType.custom,
+    final picked = await FileService.pickFile(
+      dialogTitle: isExcel
+          ? "Sélectionnez le fichier Excel des notes (.xlsx / .xls)"
+          : "Sélectionnez le fichier CSV des notes (.csv / .txt)",
       allowedExtensions: isExcel ? ['xlsx', 'xls'] : ['csv', 'txt'],
     );
 
-    if (result.isNotEmpty && result.first.path != null) {
-      final file = File(result.first.path!);
+    if (picked != null) {
       List<ParsedMarkEntry> entries;
 
       if (isExcel) {
-        final bytes = await file.readAsBytes();
-        entries = ExcelService.parseMarksXlsx(bytes);
+        entries = ExcelService.parseMarksXlsx(picked.bytes);
       } else {
-        String content;
-        try {
-          content = await file.readAsString();
-        } catch (_) {
-          final b = await file.readAsBytes();
-          content = utf8.decode(b, allowMalformed: true);
-        }
+        final content = FileService.decodeTextBytes(picked.bytes);
         entries = CsvService.parseMarksCsv(content);
       }
 

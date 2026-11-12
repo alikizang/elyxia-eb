@@ -1,9 +1,7 @@
 import 'dart:convert' show utf8;
-import 'dart:io';
 import 'dart:math' as math;
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
-import 'package:file_picker/file_picker.dart';
 
 import '../data/database_helper.dart';
 import '../models/app_settings.dart';
@@ -11,6 +9,7 @@ import '../models/school_class.dart';
 import '../models/student.dart';
 import '../services/csv_service.dart';
 import '../services/excel_service.dart';
+import '../services/file_service.dart';
 import '../theme/app_colors.dart';
 
 class StudentsScreen extends StatefulWidget {
@@ -1121,31 +1120,25 @@ class _StudentsScreenState extends State<StudentsScreen> {
   }
 
   Future<void> _importXlsx(BuildContext context) async {
-    final result = await FilePicker.pickFiles(
-      type: FileType.custom,
+    final picked = await FileService.pickFile(
+      dialogTitle: "Sélectionnez le fichier Excel des candidats (.xlsx / .xls)",
       allowedExtensions: ['xlsx', 'xls'],
     );
 
-    if (result.isNotEmpty && result.first.path != null) {
-      final file = File(result.first.path!);
-      final bytes = await file.readAsBytes();
-
-      if (bytes.isEmpty) {
-        if (mounted && context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text("Impossible de lire le fichier Excel sélectionné."),
-              backgroundColor: AppColors.error,
-            ),
-          );
-        }
-        return;
+    if (picked != null) {
+      int startTableNum = 101;
+      if (widget.students.isNotEmpty) {
+        final maxTable = widget.students
+            .map((s) => int.tryParse(s.tableNumber) ?? 0)
+            .fold<int>(0, (max, n) => n > max ? n : max);
+        if (maxTable > 0) startTableNum = maxTable + 1;
       }
 
       final students = ExcelService.parseStudentsXlsx(
-        bytes,
+        picked.bytes,
         widget.schoolClass.id!,
         academicYear: widget.academicYear,
+        startDefaultTableNumber: startTableNum,
       );
 
       if (students.isEmpty) {
@@ -1175,25 +1168,27 @@ class _StudentsScreenState extends State<StudentsScreen> {
   }
 
   Future<void> _importCsv(BuildContext context) async {
-    final result = await FilePicker.pickFiles(
-      type: FileType.custom,
+    final picked = await FileService.pickFile(
+      dialogTitle: "Sélectionnez le fichier CSV des candidats (.csv / .txt)",
       allowedExtensions: ['csv', 'txt'],
     );
 
-    if (result.isNotEmpty && result.first.path != null) {
-      final file = File(result.first.path!);
-      String content = '';
-      try {
-        content = await file.readAsString();
-      } catch (_) {
-        final b = await file.readAsBytes();
-        content = utf8.decode(b, allowMalformed: true);
+    if (picked != null) {
+      final content = FileService.decodeTextBytes(picked.bytes);
+
+      int startTableNum = 101;
+      if (widget.students.isNotEmpty) {
+        final maxTable = widget.students
+            .map((s) => int.tryParse(s.tableNumber) ?? 0)
+            .fold<int>(0, (max, n) => n > max ? n : max);
+        if (maxTable > 0) startTableNum = maxTable + 1;
       }
 
       final students = CsvService.parseStudentsCsv(
         content,
         widget.schoolClass.id!,
         academicYear: widget.academicYear,
+        startDefaultTableNumber: startTableNum,
       );
 
       if (students.isEmpty) {
@@ -1224,21 +1219,19 @@ class _StudentsScreenState extends State<StudentsScreen> {
 
   Future<void> _downloadXlsxTemplate(BuildContext context) async {
     final bytes = ExcelService.generateStudentsTemplateXlsx();
-    final savedUri = await FilePicker.saveFile(
-      dialogTitle: "Enregistrer le modèle Excel",
+    final savedPath = await FileService.saveFile(
+      dialogTitle: "Enregistrer le modèle Excel des candidats",
       fileName: "modele_candidats_elyxia.xlsx",
       bytes: bytes,
     );
 
-    if (savedUri != null) {
-      if (mounted && context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text("Modèle Excel (.xlsx) enregistré avec succès ! (${savedUri.path})"),
-            backgroundColor: AppColors.success,
-          ),
-        );
-      }
+    if (savedPath != null && mounted && context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text("Modèle Excel (.xlsx) enregistré avec succès : $savedPath"),
+          backgroundColor: AppColors.success,
+        ),
+      );
     }
   }
 
@@ -1248,21 +1241,19 @@ class _StudentsScreenState extends State<StudentsScreen> {
         "102;ADJALLÉ;Afiwa Blandine;F;22/09/2007;Aného;;NON\n"
         "103;MENSAH;Kokou Mawunyo;M;03/01/2008;Kpalimé;;OUI\n";
 
-    final savedUri = await FilePicker.saveFile(
-      dialogTitle: "Enregistrer le modèle CSV",
+    final savedPath = await FileService.saveFile(
+      dialogTitle: "Enregistrer le modèle CSV des candidats",
       fileName: "modele_candidats_elyxia.csv",
       bytes: Uint8List.fromList(utf8.encode(template)),
     );
 
-    if (savedUri != null) {
-      if (mounted && context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text("Modèle CSV enregistré avec succès ! (${savedUri.path})"),
-            backgroundColor: AppColors.success,
-          ),
-        );
-      }
+    if (savedPath != null && mounted && context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text("Modèle CSV (.csv) enregistré avec succès : $savedPath"),
+          backgroundColor: AppColors.success,
+        ),
+      );
     }
   }
 }

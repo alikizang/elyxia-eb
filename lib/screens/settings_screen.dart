@@ -1,7 +1,5 @@
 import 'dart:convert' show base64Decode, base64Encode, utf8;
-import 'dart:io';
 import 'dart:typed_data';
-import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 
 import '../data/database_helper.dart';
@@ -11,6 +9,7 @@ import '../models/app_user.dart';
 import '../models/exam.dart';
 import '../models/school_class.dart';
 import '../models/subject.dart';
+import '../services/file_service.dart';
 import '../theme/app_colors.dart';
 
 class SettingsScreen extends StatefulWidget {
@@ -213,14 +212,13 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
   }
 
   Future<void> _pickSchoolLogo() async {
-    final result = await FilePicker.pickFiles(
-      type: FileType.custom,
+    final picked = await FileService.pickFile(
+      dialogTitle: "Sélectionnez le logo de l'établissement",
       allowedExtensions: ['jpg', 'jpeg', 'png', 'webp'],
     );
 
-    if (result.isNotEmpty && result.first.path != null) {
-      final bytes = await File(result.first.path!).readAsBytes();
-      final base64String = base64Encode(bytes);
+    if (picked != null) {
+      final base64String = base64Encode(picked.bytes);
       setState(() {
         _customLogoBase64 = base64String;
       });
@@ -249,14 +247,13 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
   }
 
   Future<void> _pickDirectorSignature() async {
-    final result = await FilePicker.pickFiles(
-      type: FileType.custom,
+    final picked = await FileService.pickFile(
+      dialogTitle: "Sélectionnez la signature du Chef d'Établissement",
       allowedExtensions: ['jpg', 'jpeg', 'png', 'webp'],
     );
-    if (result.isNotEmpty && result.first.path != null) {
-      final bytes = await File(result.first.path!).readAsBytes();
+    if (picked != null) {
       setState(() {
-        _directorSigBase64 = base64Encode(bytes);
+        _directorSigBase64 = base64Encode(picked.bytes);
       });
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -271,14 +268,13 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
   }
 
   Future<void> _pickJurySignature() async {
-    final result = await FilePicker.pickFiles(
-      type: FileType.custom,
+    final picked = await FileService.pickFile(
+      dialogTitle: "Sélectionnez la signature du Président du Jury",
       allowedExtensions: ['jpg', 'jpeg', 'png', 'webp'],
     );
-    if (result.isNotEmpty && result.first.path != null) {
-      final bytes = await File(result.first.path!).readAsBytes();
+    if (picked != null) {
       setState(() {
-        _jurySigBase64 = base64Encode(bytes);
+        _jurySigBase64 = base64Encode(picked.bytes);
       });
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -293,14 +289,13 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
   }
 
   Future<void> _pickSchoolStamp() async {
-    final result = await FilePicker.pickFiles(
-      type: FileType.custom,
+    final picked = await FileService.pickFile(
+      dialogTitle: "Sélectionnez le cachet officiel de l'école",
       allowedExtensions: ['jpg', 'jpeg', 'png', 'webp'],
     );
-    if (result.isNotEmpty && result.first.path != null) {
-      final bytes = await File(result.first.path!).readAsBytes();
+    if (picked != null) {
       setState(() {
-        _schoolStampBase64 = base64Encode(bytes);
+        _schoolStampBase64 = base64Encode(picked.bytes);
       });
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -2060,16 +2055,16 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
       final dateStr = DateTime.now().toIso8601String().split('T').first;
       final defaultName = "elyxia_eb_backup_$dateStr.db";
 
-      final path = await FilePicker.saveFile(
+      final savedPath = await FileService.saveFile(
         dialogTitle: "Enregistrer la sauvegarde SQLite (.db)",
         fileName: defaultName,
         bytes: Uint8List.fromList(bytes),
       );
 
-      if (path != null && mounted) {
+      if (savedPath != null && mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text("Base de données exportée avec succès : $path"),
+            content: Text("Base de données exportée avec succès : $savedPath"),
             backgroundColor: AppColors.success,
             behavior: SnackBarBehavior.floating,
           ),
@@ -2086,15 +2081,13 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
 
   Future<void> _importDatabase() async {
     try {
-      final result = await FilePicker.pickFiles(
+      final picked = await FileService.pickFile(
         dialogTitle: "Sélectionnez le fichier de sauvegarde SQLite (.db)",
-        type: FileType.custom,
         allowedExtensions: ['db', 'sqlite', 'sqlite3'],
       );
 
-      if (result.isNotEmpty && result.first.path != null) {
-        final bytes = await File(result.first.path!).readAsBytes();
-        await DatabaseHelper.instance.importDatabaseBytes(bytes);
+      if (picked != null) {
+        await DatabaseHelper.instance.importDatabaseBytes(picked.bytes);
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
@@ -2121,16 +2114,16 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
       final dateStr = DateTime.now().toIso8601String().split('T').first;
       final defaultName = "elyxia_eb_script_$dateStr.sql";
 
-      final path = await FilePicker.saveFile(
+      final savedPath = await FileService.saveFile(
         dialogTitle: "Enregistrer le script SQL (.sql)",
         fileName: defaultName,
         bytes: Uint8List.fromList(utf8.encode(sqlScript)),
       );
 
-      if (path != null && mounted) {
+      if (savedPath != null && mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text("Script SQL exporté avec succès : $path"),
+            content: Text("Script SQL exporté avec succès : $savedPath"),
             backgroundColor: AppColors.success,
             behavior: SnackBarBehavior.floating,
           ),

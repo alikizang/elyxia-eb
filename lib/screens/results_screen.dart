@@ -2,7 +2,6 @@ import 'dart:convert' show utf8;
 import 'dart:math' as math;
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
-import 'package:file_picker/file_picker.dart';
 
 import '../models/app_settings.dart';
 import '../models/exam.dart';
@@ -11,6 +10,8 @@ import '../models/student_result.dart';
 import '../models/subject.dart';
 import '../services/calculation_service.dart';
 import '../services/csv_service.dart';
+import '../services/excel_service.dart';
+import '../services/file_service.dart';
 import '../theme/app_colors.dart';
 
 class ResultsScreen extends StatefulWidget {
@@ -83,16 +84,71 @@ class _ResultsScreenState extends State<ResultsScreen> {
               builder: (context, constraints) {
                 final isCompact = constraints.maxWidth < 1000;
                 final actionButtons = <Widget>[
-                  // Bouton Exporter CSV
-                  OutlinedButton.icon(
-                    onPressed: () => _exportCsv(context),
-                    icon: const Icon(Icons.file_download_outlined, size: 18),
-                    label: const Text("Exporter CSV"),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: primaryColor,
-                      side: BorderSide(color: primaryColor),
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  // Menu Exporter Résultats (Excel prioritaire / CSV)
+                  PopupMenuButton<String>(
+                    tooltip: "Exporter les délibérations officielles",
+                    onSelected: (val) {
+                      if (val == 'xlsx') {
+                        _exportXlsx(context);
+                      } else if (val == 'csv') {
+                        _exportCsv(context);
+                      }
+                    },
+                    itemBuilder: (ctx) => [
+                      PopupMenuItem(
+                        value: 'xlsx',
+                        child: Row(
+                          children: [
+                            Icon(Icons.table_chart_rounded, size: 18, color: Colors.green.shade700),
+                            const SizedBox(width: 10),
+                            const Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text("Exporter en Excel (.xlsx)", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                                Text("Tableau complet avec moyennes et rangs", style: TextStyle(fontSize: 11, color: AppColors.textSecondary)),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                      const PopupMenuDivider(),
+                      const PopupMenuItem(
+                        value: 'csv',
+                        child: Row(
+                          children: [
+                            Icon(Icons.description_outlined, size: 18, color: AppColors.textSecondary),
+                            SizedBox(width: 10),
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text("Exporter en CSV (.csv)", style: TextStyle(fontSize: 13)),
+                                Text("Format universel texte délimité", style: TextStyle(fontSize: 11, color: AppColors.textSecondary)),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                    child: OutlinedButton.icon(
+                      onPressed: null,
+                      icon: const Icon(Icons.file_download_outlined, size: 18),
+                      label: const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text("Exporter Résultats"),
+                          SizedBox(width: 4),
+                          Icon(Icons.arrow_drop_down, size: 16),
+                        ],
+                      ),
+                      style: OutlinedButton.styleFrom(
+                        disabledForegroundColor: primaryColor,
+                        foregroundColor: primaryColor,
+                        side: BorderSide(color: primaryColor),
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                      ),
                     ),
                   ),
                   // Bouton PV A4
@@ -475,24 +531,41 @@ class _ResultsScreenState extends State<ResultsScreen> {
     );
   }
 
+  Future<void> _exportXlsx(BuildContext context) async {
+    final bytes = ExcelService.exportClassResultsToXlsx(widget.subjects, widget.results);
+    final savedPath = await FileService.saveFile(
+      dialogTitle: "Enregistrer les résultats en Excel (.xlsx)",
+      fileName: "Resultats_${widget.schoolClass.name.replaceAll(' ', '_')}_${widget.exam.title.replaceAll(' ', '_')}.xlsx",
+      bytes: bytes,
+    );
+
+    if (savedPath != null && mounted && context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text("Fichier Excel enregistré avec succès : $savedPath"),
+          backgroundColor: AppColors.success,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
+  }
+
   Future<void> _exportCsv(BuildContext context) async {
     final csvContent = CsvService.exportClassResultsToCsv(widget.subjects, widget.results);
-    final savedUri = await FilePicker.saveFile(
-      dialogTitle: "Enregistrer les résultats en CSV",
+    final savedPath = await FileService.saveFile(
+      dialogTitle: "Enregistrer les résultats en CSV (.csv)",
       fileName: "Resultats_${widget.schoolClass.name.replaceAll(' ', '_')}_${widget.exam.title.replaceAll(' ', '_')}.csv",
       bytes: Uint8List.fromList(utf8.encode(csvContent)),
     );
 
-    if (savedUri != null) {
-      if (mounted && context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text("Fichier CSV enregistré avec succès ! (${savedUri.path})"),
-            backgroundColor: AppColors.success,
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
-      }
+    if (savedPath != null && mounted && context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text("Fichier CSV enregistré avec succès : $savedPath"),
+          backgroundColor: AppColors.success,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
     }
   }
 }

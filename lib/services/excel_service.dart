@@ -2,6 +2,8 @@ import 'dart:typed_data';
 import 'package:excel/excel.dart';
 
 import '../models/student.dart';
+import '../models/student_result.dart';
+import '../models/subject.dart';
 
 class ParsedMarkEntry {
   final String tableNumber;
@@ -18,6 +20,34 @@ class ParsedMarkEntry {
 }
 
 class ExcelService {
+  /// Sépare intelligemment un nom complet en Nom de famille et Prénoms
+  static ({String lastName, String firstName}) splitFullName(String text) {
+    final clean = text.trim();
+    if (clean.isEmpty) return (lastName: '', firstName: '');
+    final parts = clean.split(RegExp(r'\s+'));
+    if (parts.length == 1) {
+      return (lastName: parts[0].toUpperCase(), firstName: '');
+    }
+
+    // Détecte les parties entièrement en majuscules (convention togolaise/francophone pour le patronyme)
+    final upperParts = <String>[];
+    final otherParts = <String>[];
+    for (final p in parts) {
+      if (p == p.toUpperCase() && p.length > 1 && !RegExp(r'^\d+$').hasMatch(p)) {
+        upperParts.add(p);
+      } else {
+        otherParts.add(p);
+      }
+    }
+
+    if (upperParts.isNotEmpty && otherParts.isNotEmpty) {
+      return (lastName: upperParts.join(' '), firstName: otherParts.join(' '));
+    }
+
+    // Par défaut : premier mot = Nom, reste = Prénoms
+    return (lastName: parts[0].toUpperCase(), firstName: parts.sublist(1).join(' '));
+  }
+
   /// Génère un fichier modèle Excel (.xlsx) pré-formaté pour l'import des élèves
   static Uint8List generateStudentsTemplateXlsx() {
     final excel = Excel.createExcel();
@@ -84,9 +114,11 @@ class ExcelService {
     final excel = Excel.decodeBytes(bytes);
     if (excel.tables.isEmpty) return [];
 
+    // Recherche de la première feuille contenant des données textuelles utiles
     Sheet? targetSheet;
     for (final table in excel.tables.values) {
-      if (table.rows.isNotEmpty) {
+      final hasData = table.rows.any((row) => row.any((cell) => _cellToString(cell).isNotEmpty));
+      if (hasData) {
         targetSheet = table;
         break;
       }
@@ -101,30 +133,38 @@ class ExcelService {
     int colMatricule = -1;
     int colLastName = -1;
     int colFirstName = -1;
+    int colFullName = -1;
     int colGender = -1;
     int colBirthDate = -1;
     int colBirthPlace = -1;
     int colRepeater = -1;
 
-    for (int r = 0; r < rows.length && r < 5; r++) {
+    for (int r = 0; r < rows.length && r < 6; r++) {
       final row = rows[r];
-      final rowStr = row.map((cell) => _cellToString(cell).toLowerCase()).toList();
+      final rowStr = row.map((cell) => _cellToString(cell).toLowerCase().trim()).toList();
 
-      final hasNom = rowStr.any((c) => c.contains('nom') && !c.contains('prénom'));
+      final hasNom = rowStr.any((c) => c.contains('nom'));
       final hasMatricule = rowStr.any((c) => c.contains('matricule'));
       final hasTable = rowStr.any((c) => c.contains('table') || c.contains('n°') || c.contains('numéro'));
+      final hasPrenom = rowStr.any((c) => c.contains('prénom') || c.contains('prenom'));
 
-      if (hasNom || hasMatricule || hasTable) {
+      if (hasNom || hasMatricule || hasTable || hasPrenom) {
         startRow = r + 1;
         for (int c = 0; c < rowStr.length; c++) {
           final val = rowStr[c];
-          if (val.contains('table') || val.contains('n°') || val.contains('numéro')) {
+          final withoutPrenom = val.replaceAll('prénom', '').replaceAll('prenom', '');
+          final hasNom = withoutPrenom.contains('nom');
+          final hasPrenom = val.contains('prénom') || val.contains('prenom');
+
+          if (val.contains('table') || val.contains('n°') || val.contains('numéro') || val == 'n') {
             colTable = c;
-          } else if (val.contains('matricule')) {
+          } else if (val.contains('matricule') || val.contains('mtle') || val.contains('identifiant')) {
             colMatricule = c;
-          } else if (val.contains('nom') && !val.contains('prénom')) {
+          } else if ((hasNom && hasPrenom) || val.contains('complet') || (hasNom && (val.contains('&') || val.contains('et')))) {
+            colFullName = c;
+          } else if (hasNom) {
             colLastName = c;
-          } else if (val.contains('prénom') || val.contains('prenom')) {
+          } else if (hasPrenom) {
             colFirstName = c;
           } else if (val.contains('sexe') || val.contains('genre') || val == 'm/f') {
             colGender = c;
@@ -140,7 +180,7 @@ class ExcelService {
       }
     }
 
-    if (colLastName == -1 && colFirstName == -1) {
+    if (colLastName == -1 && colFirstName == -1 && colFullName == -1) {
       colTable = 0;
       colLastName = 1;
       colFirstName = 2;
@@ -163,8 +203,28 @@ class ExcelService {
         return _cellToString(row[col]);
       }
 
-      final lastName = colLastName >= 0 ? getVal(colLastName) : '';
-      final firstName = colFirstName >= 0 ? getVal(colFirstName) : '';
+      String lastName = '';
+      String firstName = '';
+
+      if (colLastName >= 0 && colFirstName >= 0) {
+        lastName = getVal(colLastName);
+        firstName = getVal(colFirstName);
+      } else if (colFullName >= 0) {
+        final full = getVal(colFullName);
+        final split = splitFullName(full);
+        lastName = split.lastName;
+        firstName = split.firstName;
+      } else if (colLastName >= 0) {
+        final full = getVal(colLastName);
+        final split = splitFullName(full);
+        lastName = split.lastName;
+        firstName = split.firstName;
+      } else if (colFirstName >= 0) {
+        final full = getVal(colFirstName);
+        final split = splitFullName(full);
+        lastName = split.lastName;
+        firstName = split.firstName;
+      }
 
       if (lastName.isEmpty && firstName.isEmpty) continue;
 
@@ -230,12 +290,12 @@ class ExcelService {
       TextCellValue('Absent (OUI/NON)'),
     ]);
 
-    // Remplissage avec les élèves existants de la classe
+    // Remplissage avec les candidats existants
     for (final s in students) {
       sheet.appendRow([
         TextCellValue(s.tableNumber),
         TextCellValue(s.fullName),
-        TextCellValue(''),
+        TextCellValue(''), // Note vide à saisir
         TextCellValue('NON'),
       ]);
     }
@@ -251,7 +311,8 @@ class ExcelService {
 
     Sheet? targetSheet;
     for (final table in excel.tables.values) {
-      if (table.rows.isNotEmpty) {
+      final hasData = table.rows.any((row) => row.any((cell) => _cellToString(cell).isNotEmpty));
+      if (hasData) {
         targetSheet = table;
         break;
       }
@@ -267,9 +328,9 @@ class ExcelService {
     int colScore = -1;
     int colAbsent = -1;
 
-    for (int r = 0; r < rows.length && r < 5; r++) {
+    for (int r = 0; r < rows.length && r < 6; r++) {
       final row = rows[r];
-      final rowStr = row.map((c) => _cellToString(c).toLowerCase()).toList();
+      final rowStr = row.map((c) => _cellToString(c).toLowerCase().trim()).toList();
 
       final hasScore = rowStr.any((c) => c.contains('note') || c.contains('score') || c.contains('/20'));
       final hasTable = rowStr.any((c) => c.contains('table') || c.contains('n°') || c.contains('numéro'));
@@ -311,10 +372,19 @@ class ExcelService {
 
       final tableNum = colTable >= 0 ? getVal(colTable).trim() : '';
       final studentName = colName >= 0 ? getVal(colName).trim() : '';
-      final rawScore = colScore >= 0 ? getVal(colScore).trim().replaceAll(',', '.') : '';
+      String rawScore = colScore >= 0 ? getVal(colScore).trim().replaceAll(',', '.') : '';
       final rawAbsent = colAbsent >= 0 ? getVal(colAbsent).trim().toUpperCase() : '';
 
-      final isAbsent = rawAbsent == 'OUI' || rawAbsent == 'ABS' || rawAbsent == 'TRUE' || rawAbsent == '1';
+      // Gestion directe des mentions "ABS" ou "A" écrites directement dans la colonne Note
+      bool isAbsent = rawAbsent == 'OUI' || rawAbsent == 'ABS' || rawAbsent == 'TRUE' || rawAbsent == '1';
+      if (rawScore.toUpperCase() == 'ABS' || rawScore.toUpperCase() == 'A' || rawScore.toUpperCase() == 'ABSENT') {
+        isAbsent = true;
+        rawScore = '';
+      }
+
+      // Nettoie les suffixes éventuels comme "/20"
+      rawScore = rawScore.replaceAll('/20', '').trim();
+
       double? score;
       if (!isAbsent && rawScore.isNotEmpty) {
         final parsed = double.tryParse(rawScore);
@@ -338,10 +408,60 @@ class ExcelService {
     return entries;
   }
 
+  /// Exporte les résultats officiels complets de la classe au format Excel (.xlsx)
+  static Uint8List exportClassResultsToXlsx(List<Subject> subjects, List<StudentResult> results) {
+    final excel = Excel.createExcel();
+    final sheetName = excel.getDefaultSheet() ?? 'Délibérations';
+    final sheet = excel[sheetName];
+
+    final header = <CellValue>[
+      TextCellValue('Rang'),
+      TextCellValue('N° Table'),
+      TextCellValue('Matricule'),
+      TextCellValue('Nom & Prénoms'),
+      TextCellValue('Sexe'),
+    ];
+    for (final s in subjects) {
+      header.add(TextCellValue('${s.name} (${s.coefficient.toInt()})'));
+    }
+    header.addAll([
+      TextCellValue('Total Points'),
+      TextCellValue('Moyenne /20'),
+      TextCellValue('Décision'),
+      TextCellValue('Mention'),
+    ]);
+    sheet.appendRow(header);
+
+    for (final r in results) {
+      final row = <CellValue>[
+        TextCellValue(r.rankFormatted),
+        TextCellValue(r.student.tableNumber),
+        TextCellValue(r.student.matricule),
+        TextCellValue(r.student.fullName),
+        TextCellValue(r.student.gender),
+      ];
+      for (final g in r.grades) {
+        row.add(TextCellValue(g.scoreFormatted));
+      }
+      row.addAll([
+        TextCellValue(r.totalPointsFormatted),
+        TextCellValue(r.averageFormatted),
+        TextCellValue(r.decision),
+        TextCellValue(r.mention),
+      ]);
+      sheet.appendRow(row);
+    }
+
+    final encoded = excel.encode();
+    return Uint8List.fromList(encoded ?? []);
+  }
+
   static String _cellToString(Data? cell) {
     if (cell == null || cell.value == null) return '';
     final val = cell.value;
-    if (val is TextCellValue) return (val.value.text ?? '').trim();
+    if (val is TextCellValue) {
+      return val.value.toString().trim();
+    }
     if (val is IntCellValue) return val.value.toString();
     if (val is DoubleCellValue) {
       if (val.value % 1 == 0) {

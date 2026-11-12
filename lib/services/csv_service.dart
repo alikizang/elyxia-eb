@@ -33,30 +33,38 @@ class CsvService {
     int colMatricule = -1;
     int colLastName = -1;
     int colFirstName = -1;
+    int colFullName = -1;
     int colGender = -1;
     int colBirthDate = -1;
     int colBirthPlace = -1;
     int colRepeater = -1;
 
-    for (int r = 0; r < rows.length && r < 5; r++) {
+    for (int r = 0; r < rows.length && r < 6; r++) {
       final row = rows[r];
       final rowStr = row.map((e) => e.toString().toLowerCase().trim()).toList();
 
-      final hasNom = rowStr.any((c) => c.contains('nom') && !c.contains('prénom') && !c.contains('prenom'));
+      final hasNom = rowStr.any((c) => c.contains('nom'));
       final hasMatricule = rowStr.any((c) => c.contains('matricule'));
       final hasTable = rowStr.any((c) => c.contains('table') || c.contains('n°') || c.contains('numéro'));
+      final hasPrenom = rowStr.any((c) => c.contains('prénom') || c.contains('prenom'));
 
-      if (hasNom || hasMatricule || hasTable) {
+      if (hasNom || hasMatricule || hasTable || hasPrenom) {
         startRow = r + 1;
         for (int c = 0; c < rowStr.length; c++) {
           final val = rowStr[c];
-          if (val.contains('table') || val.contains('n°') || val.contains('numéro')) {
+          final withoutPrenom = val.replaceAll('prénom', '').replaceAll('prenom', '');
+          final hasNom = withoutPrenom.contains('nom');
+          final hasPrenom = val.contains('prénom') || val.contains('prenom');
+
+          if (val.contains('table') || val.contains('n°') || val.contains('numéro') || val == 'n') {
             colTable = c;
-          } else if (val.contains('matricule')) {
+          } else if (val.contains('matricule') || val.contains('mtle') || val.contains('identifiant')) {
             colMatricule = c;
-          } else if (val.contains('nom') && !val.contains('prénom') && !val.contains('prenom')) {
+          } else if ((hasNom && hasPrenom) || val.contains('complet') || (hasNom && (val.contains('&') || val.contains('et')))) {
+            colFullName = c;
+          } else if (hasNom) {
             colLastName = c;
-          } else if (val.contains('prénom') || val.contains('prenom')) {
+          } else if (hasPrenom) {
             colFirstName = c;
           } else if (val.contains('sexe') || val.contains('genre') || val == 'm/f') {
             colGender = c;
@@ -72,7 +80,7 @@ class CsvService {
       }
     }
 
-    if (colLastName == -1 && colFirstName == -1) {
+    if (colLastName == -1 && colFirstName == -1 && colFullName == -1) {
       colTable = 0;
       colLastName = 1;
       colFirstName = 2;
@@ -95,8 +103,28 @@ class CsvService {
         return row[col].toString().trim();
       }
 
-      final lastName = colLastName >= 0 ? getVal(colLastName) : '';
-      final firstName = colFirstName >= 0 ? getVal(colFirstName) : '';
+      String lastName = '';
+      String firstName = '';
+
+      if (colLastName >= 0 && colFirstName >= 0) {
+        lastName = getVal(colLastName);
+        firstName = getVal(colFirstName);
+      } else if (colFullName >= 0) {
+        final full = getVal(colFullName);
+        final split = ExcelService.splitFullName(full);
+        lastName = split.lastName;
+        firstName = split.firstName;
+      } else if (colLastName >= 0) {
+        final full = getVal(colLastName);
+        final split = ExcelService.splitFullName(full);
+        lastName = split.lastName;
+        firstName = split.firstName;
+      } else if (colFirstName >= 0) {
+        final full = getVal(colFirstName);
+        final split = ExcelService.splitFullName(full);
+        lastName = split.lastName;
+        firstName = split.firstName;
+      }
 
       if (lastName.isEmpty && firstName.isEmpty) continue;
 
@@ -235,12 +263,19 @@ class CsvService {
         return row[col].toString().trim();
       }
 
-      final tableNum = colTable >= 0 ? getVal(colTable) : '';
-      final studentName = colName >= 0 ? getVal(colName) : '';
-      final rawScore = colScore >= 0 ? getVal(colScore).replaceAll(',', '.') : '';
-      final rawAbsent = colAbsent >= 0 ? getVal(colAbsent).toUpperCase() : '';
+      final tableNum = colTable >= 0 ? getVal(colTable).trim() : '';
+      final studentName = colName >= 0 ? getVal(colName).trim() : '';
+      String rawScore = colScore >= 0 ? getVal(colScore).replaceAll(',', '.').trim() : '';
+      final rawAbsent = colAbsent >= 0 ? getVal(colAbsent).toUpperCase().trim() : '';
 
-      final isAbsent = rawAbsent == 'OUI' || rawAbsent == 'ABS' || rawAbsent == 'TRUE' || rawAbsent == '1';
+      bool isAbsent = rawAbsent == 'OUI' || rawAbsent == 'ABS' || rawAbsent == 'TRUE' || rawAbsent == '1';
+      if (rawScore.toUpperCase() == 'ABS' || rawScore.toUpperCase() == 'A' || rawScore.toUpperCase() == 'ABSENT') {
+        isAbsent = true;
+        rawScore = '';
+      }
+
+      rawScore = rawScore.replaceAll('/20', '').trim();
+
       double? score;
       if (!isAbsent && rawScore.isNotEmpty) {
         final parsed = double.tryParse(rawScore);
