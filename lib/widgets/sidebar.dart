@@ -286,6 +286,30 @@ class Sidebar extends StatelessWidget {
     bool isYearClosed,
     Color dropdownBg,
   ) {
+    AcademicYear? effectiveYear;
+    if (selectedYear != null && academicYears.isNotEmpty) {
+      effectiveYear = academicYears.cast<AcademicYear?>().firstWhere(
+            (y) => y != null && (y.id == selectedYear!.id || y.name == selectedYear!.name),
+            orElse: () => null,
+          );
+    }
+
+    Exam? effectiveExam;
+    if (selectedExam != null && exams.isNotEmpty) {
+      effectiveExam = exams.cast<Exam?>().firstWhere(
+            (e) => e != null && e.id == selectedExam!.id,
+            orElse: () => null,
+          );
+    }
+
+    SchoolClass? effectiveClass;
+    if (selectedClass != null && classes.isNotEmpty) {
+      effectiveClass = classes.cast<SchoolClass?>().firstWhere(
+            (c) => c != null && c.id == selectedClass!.id,
+            orElse: () => null,
+          );
+    }
+
     return Column(
       children: [
         // Header de Marque Elyxia EB avec bouton de réduction
@@ -460,7 +484,8 @@ class Sidebar extends StatelessWidget {
                     Expanded(
                       child: DropdownButtonHideUnderline(
                         child: DropdownButton<AcademicYear>(
-                          value: selectedYear,
+                          value: effectiveYear,
+                          hint: const Text("Aucune année", style: TextStyle(color: Colors.white54, fontSize: 11)),
                           isDense: true,
                           dropdownColor: dropdownBg,
                           icon: const Icon(Icons.arrow_drop_down, color: Colors.white70, size: 18),
@@ -476,7 +501,7 @@ class Sidebar extends StatelessWidget {
                                     style: TextStyle(
                                       color: yr.isClosed ? Colors.white70 : Colors.white,
                                       fontSize: 11.5,
-                                      fontWeight: yr.name == selectedYear?.name ? FontWeight.bold : FontWeight.normal,
+                                      fontWeight: yr.name == effectiveYear?.name ? FontWeight.bold : FontWeight.normal,
                                     ),
                                   ),
                                   if (yr.isClosed) ...[
@@ -531,7 +556,8 @@ class Sidebar extends StatelessWidget {
                 ),
                 child: DropdownButtonHideUnderline(
                   child: DropdownButton<Exam>(
-                    value: selectedExam,
+                    value: effectiveExam,
+                    hint: const Text("Aucune session", style: TextStyle(color: Colors.white54, fontSize: 11)),
                     isExpanded: true,
                     isDense: true,
                     dropdownColor: dropdownBg,
@@ -575,7 +601,8 @@ class Sidebar extends StatelessWidget {
                 ),
                 child: DropdownButtonHideUnderline(
                   child: DropdownButton<SchoolClass>(
-                    value: selectedClass,
+                    value: effectiveClass,
+                    hint: const Text("Aucune classe", style: TextStyle(color: Colors.white54, fontSize: 11)),
                     isExpanded: true,
                     isDense: true,
                     dropdownColor: dropdownBg,

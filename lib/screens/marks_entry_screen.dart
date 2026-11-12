@@ -249,16 +249,27 @@ class _MarksEntryScreenState extends State<MarksEntryScreen> {
       for (final entry in entries) {
         Student? matchedStudent;
         if (entry.tableNumber.isNotEmpty) {
+          final entryTableClean = entry.tableNumber.trim().toLowerCase();
+          final entryTableInt = int.tryParse(entry.tableNumber.trim());
+
           matchedStudent = widget.students.cast<Student?>().firstWhere(
-            (s) => s != null && (s.tableNumber.trim() == entry.tableNumber.trim() ||
-                int.tryParse(s.tableNumber) == int.tryParse(entry.tableNumber)),
+            (s) {
+              if (s == null) return false;
+              final sTableClean = s.tableNumber.trim().toLowerCase();
+              if (sTableClean == entryTableClean) return true;
+              final sTableInt = int.tryParse(s.tableNumber.trim());
+              if (entryTableInt != null && sTableInt != null && entryTableInt == sTableInt) {
+                return true;
+              }
+              return false;
+            },
             orElse: () => null,
           );
         }
         if (matchedStudent == null && entry.studentName.isNotEmpty) {
-          final cleanEntry = entry.studentName.toLowerCase().replaceAll(' ', '');
+          final cleanEntry = _normalizeName(entry.studentName);
           matchedStudent = widget.students.cast<Student?>().firstWhere(
-            (s) => s != null && s.fullName.toLowerCase().replaceAll(' ', '') == cleanEntry,
+            (s) => s != null && _normalizeName(s.fullName) == cleanEntry,
             orElse: () => null,
           );
         }
@@ -280,17 +291,41 @@ class _MarksEntryScreenState extends State<MarksEntryScreen> {
       setState(() {});
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              "$matchedCount note(s) chargée(s) avec succès pour '${_selectedSubject!.name}' ! Cliquez sur 'Enregistrer les Notes' pour sauvegarder.",
+        if (matchedCount == 0) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                "${entries.length} ligne(s) lue(s) dans le fichier, mais aucun candidat ne correspond aux N° de Table ou Noms des élèves de cette classe.",
+              ),
+              backgroundColor: AppColors.warning,
+              duration: const Duration(seconds: 5),
             ),
-            backgroundColor: AppColors.success,
-            duration: const Duration(seconds: 4),
-          ),
-        );
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                "$matchedCount note(s) chargée(s) avec succès pour '${_selectedSubject!.name}' ! Cliquez sur 'Enregistrer les Notes' pour sauvegarder.",
+              ),
+              backgroundColor: AppColors.success,
+              duration: const Duration(seconds: 4),
+            ),
+          );
+        }
       }
     }
+  }
+
+  String _normalizeName(String text) {
+    var s = text.trim().toLowerCase();
+    s = s.replaceAll(RegExp(r'[éèêë]'), 'e');
+    s = s.replaceAll(RegExp(r'[àâä]'), 'a');
+    s = s.replaceAll(RegExp(r'[îï]'), 'i');
+    s = s.replaceAll(RegExp(r'[ôö]'), 'o');
+    s = s.replaceAll(RegExp(r'[ùûü]'), 'u');
+    s = s.replaceAll(RegExp(r'[ç]'), 'c');
+    s = s.replaceAll(RegExp(r'[^a-z0-9]'), '');
+    return s;
   }
 
   String _cleanFileName(String text) {

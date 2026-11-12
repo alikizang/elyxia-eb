@@ -22,14 +22,14 @@ import 'students_screen.dart';
 
 class MainLayoutScreen extends StatefulWidget {
   final AppUser currentUser;
-  final AcademicYear initialYear;
+  final AcademicYear? initialYear;
   final VoidCallback onLogout;
   final VoidCallback onThemeChanged;
 
   const MainLayoutScreen({
     super.key,
     required this.currentUser,
-    required this.initialYear,
+    this.initialYear,
     required this.onLogout,
     required this.onThemeChanged,
   });
@@ -72,25 +72,50 @@ class _MainLayoutScreenState extends State<MainLayoutScreen> {
     final db = DatabaseHelper.instance;
     final settings = await db.getSettings();
     final years = await db.getAcademicYears();
-    final activeYear = _selectedYear ?? await db.getActiveAcademicYear();
 
-    final exams = await db.getExams(academicYear: activeYear.name);
-    final activeExam = await db.getActiveExam(academicYear: activeYear.name);
+    // 1. Sélection automatique de la DERNIÈRE année académique (ou null si aucune)
+    AcademicYear? targetYear;
+    if (years.isNotEmpty) {
+      if (_selectedYear != null && years.any((y) => y.id == _selectedYear!.id || y.name == _selectedYear!.name)) {
+        targetYear = years.firstWhere((y) => y.id == _selectedYear!.id || y.name == _selectedYear!.name);
+      } else if (widget.initialYear != null && years.any((y) => y.id == widget.initialYear!.id || y.name == widget.initialYear!.name)) {
+        targetYear = years.firstWhere((y) => y.id == widget.initialYear!.id || y.name == widget.initialYear!.name);
+      } else {
+        targetYear = years.first; // Plus récente (triée name DESC)
+      }
+    } else {
+      targetYear = null;
+    }
+
+    // 2. Sélection automatique de la DERNIÈRE session d'examen (ou null si aucune)
+    List<Exam> exams = [];
+    Exam? targetExam;
+    if (targetYear != null) {
+      exams = await db.getExams(academicYear: targetYear.name);
+      if (exams.isNotEmpty) {
+        targetExam = exams.first; // Plus récente (triée ID DESC)
+      }
+    }
+
+    // 3. Sélection de la classe par défaut
     final classes = await db.getClasses();
-
     SchoolClass? defaultClass;
     if (classes.isNotEmpty) {
-      defaultClass = classes.firstWhere(
-        (c) => c.name.contains('Terminale D'),
-        orElse: () => classes.first,
-      );
+      if (_selectedClass != null && classes.any((c) => c.id == _selectedClass!.id)) {
+        defaultClass = classes.firstWhere((c) => c.id == _selectedClass!.id);
+      } else {
+        defaultClass = classes.firstWhere(
+          (c) => c.name.contains('Terminale D'),
+          orElse: () => classes.first,
+        );
+      }
     }
 
     _settings = settings;
     _academicYears = years;
-    _selectedYear = activeYear;
+    _selectedYear = targetYear;
     _exams = exams;
-    _selectedExam = activeExam ?? (exams.isNotEmpty ? exams.first : null);
+    _selectedExam = targetExam;
     _classes = classes;
     _selectedClass = defaultClass;
 
@@ -102,7 +127,7 @@ class _MainLayoutScreenState extends State<MainLayoutScreen> {
   }
 
   Future<void> _loadClassData() async {
-    if (_selectedClass == null || _selectedClass!.id == null || _selectedExam == null || _selectedExam!.id == null) {
+    if (_selectedClass == null || _selectedClass!.id == null || _selectedExam == null || _selectedExam!.id == null || _selectedYear == null) {
       _subjects = [];
       _students = [];
       _results = [];
@@ -113,7 +138,7 @@ class _MainLayoutScreenState extends State<MainLayoutScreen> {
     final subs = await db.getSubjectsForClass(_selectedClass!.id!);
     final studs = await db.getStudentsForClass(
       _selectedClass!.id!,
-      academicYear: _selectedYear?.name,
+      academicYear: _selectedYear!.name,
     );
     final mrks = await db.getMarksForExamAndClass(_selectedExam!.id!, _selectedClass!.id!);
 
@@ -228,8 +253,12 @@ class _MainLayoutScreenState extends State<MainLayoutScreen> {
     final isYearClosed = _selectedYear?.isClosed ?? false;
 
     Widget content;
-    if (_selectedExam == null && _selectedNavIndex < 5) {
+    if (_selectedYear == null && _selectedNavIndex < 6) {
+      content = _buildNoAcademicYearState();
+    } else if (_selectedNavIndex < 5 && _selectedExam == null) {
       content = _buildNoExamState();
+    } else if (_selectedNavIndex < 6 && _selectedClass == null) {
+      content = _buildNoClassState();
     } else {
       switch (_selectedNavIndex) {
         case 0:
@@ -306,7 +335,7 @@ class _MainLayoutScreenState extends State<MainLayoutScreen> {
             students: _students,
             onStudentsChanged: _onDataChanged,
             isReadOnly: isYearClosed,
-            academicYear: _selectedYear?.name ?? '2025-2026',
+            academicYear: _selectedYear?.name ?? '',
           );
           break;
         case 6:
@@ -397,6 +426,153 @@ class _MainLayoutScreenState extends State<MainLayoutScreen> {
               icon: const Icon(Icons.add, size: 18),
               label: const Text("Créer une Session d'Examen Blanc"),
               onPressed: _showQuickCreateExamDialog,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildNoAcademicYearState() {
+    return Center(
+      child: Container(
+        constraints: const BoxConstraints(maxWidth: 520),
+        padding: const EdgeInsets.all(32),
+        margin: const EdgeInsets.all(24),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: AppColors.border),
+          boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 6, offset: Offset(0, 3))],
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: AppColors.primary.withValues(alpha: 0.1),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.calendar_month_rounded, size: 48, color: AppColors.primary),
+            ),
+            const SizedBox(height: 18),
+            const Text(
+              "Bienvenue sur Elyxia EB",
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              "Aucune année académique n'est encore enregistrée. Veuillez créer votre première année scolaire (ex : 2026-2027) pour démarrer.",
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
+            ),
+            const SizedBox(height: 24),
+            ElevatedButton.icon(
+              icon: const Icon(Icons.add, size: 18),
+              label: const Text("Créer une Année Académique"),
+              onPressed: _showQuickCreateYearDialog,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showQuickCreateYearDialog() {
+    final now = DateTime.now();
+    final defaultYear = "${now.year}-${now.year + 1}";
+    final yearCtrl = TextEditingController(text: defaultYear);
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text("Nouvelle Année Académique"),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: yearCtrl,
+              decoration: const InputDecoration(
+                labelText: "Année scolaire",
+                hintText: "ex : 2026-2027",
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text("Annuler")),
+          ElevatedButton(
+            onPressed: () async {
+              final name = yearCtrl.text.trim();
+              if (name.isEmpty) return;
+              final newYr = AcademicYear(name: name, isCurrent: true, isClosed: false);
+              await DatabaseHelper.instance.addAcademicYear(newYr);
+              if (mounted) {
+                if (ctx.mounted) Navigator.pop(ctx);
+                _loadInitialData();
+              }
+            },
+            child: const Text("Créer et Activer"),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildNoClassState() {
+    return Center(
+      child: Container(
+        constraints: const BoxConstraints(maxWidth: 520),
+        padding: const EdgeInsets.all(32),
+        margin: const EdgeInsets.all(24),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: AppColors.border),
+          boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 6, offset: Offset(0, 3))],
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: AppColors.primary.withValues(alpha: 0.1),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.school_outlined, size: 48, color: AppColors.primary),
+            ),
+            const SizedBox(height: 18),
+            const Text(
+              "Aucune classe enregistrée",
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              "Veuillez configurer au moins une classe pour cette session d'examen blanc.",
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
+            ),
+            const SizedBox(height: 24),
+            ElevatedButton.icon(
+              icon: const Icon(Icons.settings_outlined, size: 18),
+              label: const Text("Gérer les Classes dans Paramètres"),
+              onPressed: () => setState(() => _selectedNavIndex = 6),
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.primary,
                 foregroundColor: Colors.white,

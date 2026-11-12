@@ -233,6 +233,73 @@ class _StudentsScreenState extends State<StudentsScreen> {
                     ),
                   ),
                 ),
+                // Menu déroulant Exporter les Élèves (Excel / CSV)
+                PopupMenuButton<String>(
+                  tooltip: "Exporter la liste des candidats de la classe",
+                  onSelected: (val) {
+                    if (val == 'xlsx') {
+                      _exportStudentsXlsx(context);
+                    } else if (val == 'csv') {
+                      _exportStudentsCsv(context);
+                    }
+                  },
+                  itemBuilder: (ctx) => [
+                    PopupMenuItem(
+                      value: 'xlsx',
+                      child: Row(
+                        children: [
+                          Icon(Icons.table_chart_rounded, size: 18, color: Colors.green.shade700),
+                          const SizedBox(width: 10),
+                          const Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text("Exporter vers Excel (.xlsx)", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                              Text("Tous les candidats de cette classe", style: TextStyle(fontSize: 11, color: AppColors.textSecondary)),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                    const PopupMenuDivider(),
+                    const PopupMenuItem(
+                      value: 'csv',
+                      child: Row(
+                        children: [
+                          Icon(Icons.description_outlined, size: 18, color: AppColors.textSecondary),
+                          SizedBox(width: 10),
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text("Exporter vers CSV (.csv)", style: TextStyle(fontSize: 13)),
+                              Text("Format universel texte délimité", style: TextStyle(fontSize: 11, color: AppColors.textSecondary)),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                  child: OutlinedButton.icon(
+                    onPressed: null,
+                    icon: const Icon(Icons.file_upload_outlined, size: 18),
+                    label: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text("Exporter Élèves"),
+                        SizedBox(width: 4),
+                        Icon(Icons.arrow_drop_down, size: 16),
+                      ],
+                    ),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: AppColors.textSecondary,
+                      disabledForegroundColor: AppColors.textSecondary,
+                      side: const BorderSide(color: AppColors.border),
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                    ),
+                  ),
+                ),
                 // Bouton Importer depuis une autre Année
                 OutlinedButton.icon(
                   onPressed: widget.isReadOnly ? null : () => _showImportFromPreviousYearDialog(context),
@@ -1214,6 +1281,75 @@ class _StudentsScreenState extends State<StudentsScreen> {
         );
         widget.onStudentsChanged();
       }
+    }
+  }
+
+  Future<void> _exportStudentsXlsx(BuildContext context) async {
+    if (widget.students.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Aucun candidat inscrit à exporter dans cette classe."),
+          backgroundColor: AppColors.error,
+        ),
+      );
+      return;
+    }
+
+    final bytes = ExcelService.exportStudentsToXlsx(
+      students: widget.students,
+      className: widget.schoolClass.name,
+      academicYear: widget.academicYear,
+    );
+
+    final cleanClass = widget.schoolClass.name.replaceAll(' ', '_').toLowerCase();
+    final cleanYear = widget.academicYear.replaceAll('/', '-');
+    final fileName = "candidats_${cleanClass}_$cleanYear.xlsx";
+
+    final savedPath = await FileService.saveFile(
+      dialogTitle: "Exporter la liste des candidats (Excel)",
+      fileName: fileName,
+      bytes: bytes,
+    );
+
+    if (savedPath != null && mounted && context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text("Liste des candidats exportée avec succès : $savedPath"),
+          backgroundColor: AppColors.success,
+        ),
+      );
+    }
+  }
+
+  Future<void> _exportStudentsCsv(BuildContext context) async {
+    if (widget.students.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Aucun candidat inscrit à exporter dans cette classe."),
+          backgroundColor: AppColors.error,
+        ),
+      );
+      return;
+    }
+
+    final csvContent = CsvService.exportStudentsToCsv(widget.students);
+    final cleanClass = widget.schoolClass.name.replaceAll(' ', '_').toLowerCase();
+    final cleanYear = widget.academicYear.replaceAll('/', '-');
+    final fileName = "candidats_${cleanClass}_$cleanYear.csv";
+
+    final savedPath = await FileService.saveFile(
+      dialogTitle: "Exporter la liste des candidats (CSV)",
+      fileName: fileName,
+      bytes: Uint8List.fromList(utf8.encode(csvContent)),
+    );
+
+    if (savedPath != null && mounted && context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text("Liste des candidats exportée avec succès : $savedPath"),
+          backgroundColor: AppColors.success,
+        ),
+      );
     }
   }
 

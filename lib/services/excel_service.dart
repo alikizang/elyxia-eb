@@ -408,6 +408,48 @@ class ExcelService {
     return entries;
   }
 
+  /// Exporte la liste des candidats d'une classe au format Excel (.xlsx)
+  static Uint8List exportStudentsToXlsx({
+    required List<Student> students,
+    required String className,
+    required String academicYear,
+  }) {
+    final excel = Excel.createExcel();
+    final sheetName = excel.getDefaultSheet() ?? 'Candidats';
+    final sheet = excel[sheetName];
+
+    sheet.appendRow([
+      TextCellValue('N° Table'),
+      TextCellValue('Matricule'),
+      TextCellValue('Nom'),
+      TextCellValue('Prénoms'),
+      TextCellValue('Sexe'),
+      TextCellValue('Date de Naissance'),
+      TextCellValue('Lieu de Naissance'),
+      TextCellValue('Classe'),
+      TextCellValue('Année Académique'),
+      TextCellValue('Doublant'),
+    ]);
+
+    for (final s in students) {
+      sheet.appendRow([
+        TextCellValue(s.tableNumber),
+        TextCellValue(s.matricule),
+        TextCellValue(s.lastName),
+        TextCellValue(s.firstName),
+        TextCellValue(s.gender),
+        TextCellValue(s.birthDate),
+        TextCellValue(s.birthPlace),
+        TextCellValue(className),
+        TextCellValue(academicYear),
+        TextCellValue(s.isRepeater ? 'OUI' : 'NON'),
+      ]);
+    }
+
+    final encoded = excel.encode();
+    return Uint8List.fromList(encoded ?? []);
+  }
+
   /// Exporte les résultats officiels complets de la classe au format Excel (.xlsx)
   static Uint8List exportClassResultsToXlsx(List<Subject> subjects, List<StudentResult> results) {
     final excel = Excel.createExcel();

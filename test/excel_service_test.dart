@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:elyxia_eb/models/student.dart';
 import 'package:elyxia_eb/services/excel_service.dart';
 import 'package:elyxia_eb/services/csv_service.dart';
 
@@ -73,5 +74,34 @@ void main() {
 
     expect(parsedMarks[1].tableNumber, '102');
     expect(parsedMarks[1].isAbsent, true);
+  });
+
+  test('Export students to XLSX and CSV', () {
+    final students = [
+      Student(
+        id: 1,
+        classId: 1,
+        tableNumber: '101',
+        lastName: 'KOUDOSSOU',
+        firstName: 'Koffi',
+        gender: 'M',
+        birthDate: '14/05/2007',
+        birthPlace: 'Lomé',
+        matricule: 'VIC-001',
+        academicYear: '2026-2027',
+      ),
+    ];
+
+    final xlsxBytes = ExcelService.exportStudentsToXlsx(
+      students: students,
+      className: 'Terminale D',
+      academicYear: '2026-2027',
+    );
+    expect(xlsxBytes.isNotEmpty, true);
+
+    final csvContent = CsvService.exportStudentsToCsv(students);
+    expect(csvContent.contains('KOUDOSSOU'), true);
+    expect(csvContent.contains('101'), true);
+    expect(csvContent.contains('VIC-001'), true);
   });
 }

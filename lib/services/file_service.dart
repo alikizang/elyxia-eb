@@ -6,12 +6,31 @@ import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as p;
 
 class FileService {
+  static bool _initialized = false;
+
+  /// Initialise les permissions de sélection de fichier sur les OS de bureau (macOS / Windows)
+  static Future<void> ensureInitialized() async {
+    if (_initialized) return;
+    _initialized = true;
+    try {
+      if (!kIsWeb && Platform.isMacOS) {
+        // Indispensable sur macOS : désactive les vérifications d'entitlements Sandbox
+        // qui bloquent l'ouverture des boîtes de dialogue de sélection/sauvegarde
+        await FilePicker.skipEntitlementsChecks();
+      }
+    } catch (e) {
+      debugPrint("FileService.ensureInitialized error: $e");
+    }
+  }
+
   /// Enregistre un fichier de manière sécurisée et garantie sur disque (Windows et macOS)
   static Future<String?> saveFile({
     required String dialogTitle,
     required String fileName,
     required Uint8List bytes,
   }) async {
+    await ensureInitialized();
+
     try {
       final savedUri = await FilePicker.saveFile(
         dialogTitle: dialogTitle,
@@ -59,20 +78,29 @@ class FileService {
     required List<String> allowedExtensions,
     String? dialogTitle,
   }) async {
-    try {
-      // Ajout des extensions minuscules et majuscules pour compatibilité totale (Windows et macOS)
-      final exts = <String>{};
-      for (final ext in allowedExtensions) {
-        final clean = ext.replaceAll('.', '').trim();
-        exts.add(clean.toLowerCase());
-        exts.add(clean.toUpperCase());
-      }
+    await ensureInitialized();
 
-      final result = await FilePicker.pickFiles(
-        dialogTitle: dialogTitle,
-        type: FileType.custom,
-        allowedExtensions: exts.toList(),
-      );
+    try {
+      final cleanExts = allowedExtensions
+          .map((ext) => ext.replaceAll('.', '').trim().toLowerCase())
+          .where((e) => e.isNotEmpty)
+          .toSet()
+          .toList();
+
+      List<PlatformFile> result = [];
+      try {
+        result = await FilePicker.pickFiles(
+          dialogTitle: dialogTitle,
+          type: FileType.custom,
+          allowedExtensions: cleanExts,
+        );
+      } catch (customErr) {
+        debugPrint("FilePicker.pickFiles custom error: $customErr, trying fallback any");
+        result = await FilePicker.pickFiles(
+          dialogTitle: dialogTitle,
+          type: FileType.any,
+        );
+      }
 
       if (result.isEmpty) return null;
       final file = result.first;
@@ -80,7 +108,9 @@ class FileService {
       Uint8List? fileBytes;
       try {
         fileBytes = await file.readAsBytes();
-      } catch (_) {}
+      } catch (readErr) {
+        debugPrint("file.readAsBytes error: $readErr");
+      }
 
       if (fileBytes == null || fileBytes.isEmpty) {
         if (file.path != null) {

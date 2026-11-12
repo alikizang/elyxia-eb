@@ -8,6 +8,7 @@ import 'models/app_settings.dart';
 import 'models/app_user.dart';
 import 'screens/login_screen.dart';
 import 'screens/main_layout_screen.dart';
+import 'services/file_service.dart';
 import 'services/window_service.dart';
 import 'theme/app_colors.dart';
 import 'theme/app_theme.dart';
@@ -20,6 +21,9 @@ void main() async {
     sqfliteFfiInit();
     databaseFactory = databaseFactoryFfi;
   }
+
+  // Initialisation des autorisations de fichiers natifs
+  await FileService.ensureInitialized();
 
   runApp(const ElyxiaEbApp());
 }
@@ -56,12 +60,13 @@ class _ElyxiaEbAppState extends State<ElyxiaEbApp> {
     try {
       final db = DatabaseHelper.instance;
       final settings = await db.getSettings();
-      final year = await db.getActiveAcademicYear();
+      final years = await db.getAcademicYears();
+      final latestYear = years.isNotEmpty ? years.first : null;
 
       if (mounted) {
         setState(() {
           _settings = settings;
-          _activeYear = year;
+          _activeYear = latestYear;
           _isLoading = false;
         });
       }
@@ -77,10 +82,12 @@ class _ElyxiaEbAppState extends State<ElyxiaEbApp> {
   }
 
   void _onLoginSuccess(AppUser user) async {
-    final year = await DatabaseHelper.instance.getActiveAcademicYear();
+    final db = DatabaseHelper.instance;
+    final years = await db.getAcademicYears();
+    final latestYear = years.isNotEmpty ? years.first : null;
     setState(() {
       _currentUser = user;
-      _activeYear = year;
+      _activeYear = latestYear;
     });
   }
 
